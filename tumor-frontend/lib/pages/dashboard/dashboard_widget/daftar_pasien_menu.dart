@@ -19,7 +19,6 @@ class DaftarPasienMenu extends StatelessWidget {
       builder: (dashboardController) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // JUDUL HALAMAN KECIL
           Padding(
             padding: EdgeInsets.only(bottom: SizeConfig.vertical(1)),
             child: PoppinsTextView(
@@ -30,7 +29,6 @@ class DaftarPasienMenu extends StatelessWidget {
             ),
           ),
 
-          // === AREA FILTER & PENCARIAN ===
           Container(
             padding: EdgeInsets.all(SizeConfig.horizontal(1.5)),
             decoration: BoxDecoration(
@@ -42,7 +40,6 @@ class DaftarPasienMenu extends StatelessWidget {
             ),
             child: Row(
               children: [
-                // 1. SEARCH BAR
                 Expanded(
                   flex: 3,
                   child: CustomTextField(
@@ -60,7 +57,6 @@ class DaftarPasienMenu extends StatelessWidget {
 
                 SpaceSizer(horizontal: 1.5),
 
-                // 2. DROPDOWN FILTER STATUS
                 Expanded(
                   flex: 1,
                   child: Container(
@@ -77,7 +73,7 @@ class DaftarPasienMenu extends StatelessWidget {
                     ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
-                        value: 'Semua Status',
+                        value: dashboardController.selectedStatusFilter,
                         icon: Icon(Icons.filter_list, color: AppColors.grey),
                         isExpanded: true,
                         style: TextStyle(
@@ -85,7 +81,9 @@ class DaftarPasienMenu extends StatelessWidget {
                           fontSize: SizeConfig.safeBlockHorizontal * 0.8,
                         ),
                         onChanged: (String? newValue) {
-                          // Logika filter disini
+                          if (newValue != null) {
+                            dashboardController.updateStatusFilter(newValue);
+                          }
                         },
                         items: <String>['Semua Status', 'Aktif', 'Tidak Aktif']
                             .map<DropdownMenuItem<String>>((String value) {
@@ -102,7 +100,7 @@ class DaftarPasienMenu extends StatelessWidget {
 
                 SpaceSizer(horizontal: 1.5),
 
-                // 3. TOMBOL REFRESH
+                // TOMBOL REFRESH
                 CustomFlatButton(
                   icon: Icons.refresh,
                   text: 'Muat Ulang',
@@ -162,7 +160,7 @@ class DaftarPasienMenu extends StatelessWidget {
             children: [
               PoppinsTextView(
                 value:
-                    'Halaman 1 dari ${dashboardController.getPasienPageCount().toInt()}',
+                    'Halaman ${dashboardController.currentPage.value} dari ${dashboardController.getPasienPageCount().toInt()}',
                 size: SizeConfig.safeBlockHorizontal * 0.7,
                 color: AppColors.grey,
               ),
@@ -171,7 +169,7 @@ class DaftarPasienMenu extends StatelessWidget {
                 children: [
                   PoppinsTextView(
                     value:
-                        'Menampilkan ${dashboardController.pasienData.length} data',
+                        'Total: ${dashboardController.pasienData.length} data',
                     size: SizeConfig.safeBlockHorizontal * 0.7,
                     color: AppColors.grey,
                   ),
@@ -184,8 +182,16 @@ class DaftarPasienMenu extends StatelessWidget {
                     child: Row(
                       children: [
                         IconButton(
-                          onPressed: () {},
-                          icon: const Icon(Icons.chevron_left, size: 20),
+                          onPressed: dashboardController.currentPage.value > 1
+                              ? () => dashboardController.previousPage()
+                              : null,
+                          icon: Icon(
+                            Icons.chevron_left,
+                            size: 20,
+                            color: dashboardController.currentPage.value > 1
+                                ? AppColors.black
+                                : AppColors.greyDisabled,
+                          ),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
                         ),
@@ -195,8 +201,20 @@ class DaftarPasienMenu extends StatelessWidget {
                           color: AppColors.greyDisabled,
                         ),
                         IconButton(
-                          onPressed: () {},
-                          icon: const Icon(Icons.chevron_right, size: 20),
+                          onPressed:
+                              dashboardController.currentPage.value <
+                                  dashboardController.getPasienPageCount()
+                              ? () => dashboardController.nextPage()
+                              : null,
+                          icon: Icon(
+                            Icons.chevron_right,
+                            size: 20,
+                            color:
+                                dashboardController.currentPage.value <
+                                    dashboardController.getPasienPageCount()
+                                ? AppColors.black
+                                : AppColors.greyDisabled,
+                          ),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
                         ),

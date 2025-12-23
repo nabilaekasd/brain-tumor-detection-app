@@ -1,10 +1,8 @@
 import 'package:axon_vision/controllers/login_controller.dart';
 import 'package:axon_vision/pages/global_widgets/custom/custom_flat_button.dart';
 import 'package:axon_vision/pages/global_widgets/custom/custom_text_field.dart';
-import 'package:axon_vision/pages/global_widgets/custom/custom_text_password_field.dart';
 import 'package:axon_vision/pages/global_widgets/frame/frame_scaffold.dart';
 import 'package:axon_vision/pages/global_widgets/text_fonts/poppins_text_view.dart';
-import 'package:axon_vision/routes/app_route.dart';
 import 'package:axon_vision/utils/app_colors.dart';
 import 'package:axon_vision/utils/asset_list.dart';
 import 'package:axon_vision/utils/size_config.dart';
@@ -12,12 +10,20 @@ import 'package:axon_vision/utils/space_sizer.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-class LoginPage extends StatelessWidget {
+class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
+
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  bool isObscure = true;
 
   @override
   Widget build(BuildContext context) {
     SizeConfig().init(context);
+
     return FrameScaffold(
       heightBar: 0,
       elevation: 0,
@@ -41,7 +47,7 @@ class LoginPage extends StatelessWidget {
                 ),
                 child: Stack(
                   children: [
-                    // Dekorasi Lingkaran Transparan
+                    // Dekorasi Lingkaran 1 (Pojok Kanan Atas)
                     Positioned(
                       top: -SizeConfig.safeBlockHorizontal * 10,
                       right: -SizeConfig.safeBlockHorizontal * 10,
@@ -54,6 +60,7 @@ class LoginPage extends StatelessWidget {
                         ),
                       ),
                     ),
+                    // Dekorasi Lingkaran 2 (Pojok Kiri Bawah)
                     Positioned(
                       bottom: SizeConfig.safeBlockVertical * 5,
                       left: -SizeConfig.safeBlockHorizontal * 5,
@@ -66,12 +73,15 @@ class LoginPage extends StatelessWidget {
                         ),
                       ),
                     ),
+
+                    // Konten Teks & Logo
                     Padding(
                       padding: EdgeInsets.all(SizeConfig.horizontal(4)),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
+                          // Logo Container
                           Container(
                             padding: EdgeInsets.all(SizeConfig.horizontal(1)),
                             decoration: BoxDecoration(
@@ -91,6 +101,7 @@ class LoginPage extends StatelessWidget {
                             size: SizeConfig.safeBlockHorizontal * 2.2,
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
+                            height: 1.2,
                           ),
                           SpaceSizer(vertical: 2),
 
@@ -122,12 +133,13 @@ class LoginPage extends StatelessWidget {
                 ),
               ),
             ),
+
             Expanded(
               flex: 5,
               child: Container(
                 color: AppColors.white,
                 padding: EdgeInsets.symmetric(
-                  horizontal: SizeConfig.horizontal(2),
+                  horizontal: SizeConfig.horizontal(3),
                 ),
                 child: Center(
                   child: SingleChildScrollView(
@@ -149,32 +161,48 @@ class LoginPage extends StatelessWidget {
                             size: SizeConfig.safeBlockHorizontal * 0.9,
                             color: AppColors.grey,
                           ),
+
                           SpaceSizer(vertical: 4),
 
-                          // Form Username
+                          // INPUT USERNAME
                           CustomTextField(
+                            controller: loginController.emailController,
                             title: 'Username/Email',
-                            titleFontWeight: FontWeight.w600,
-                            width: 100,
                             hintText: 'Masukkan username',
                             fillColor: AppColors.bgColor.withValues(
                               alpha: 0.05,
                             ),
                             borderRadius: 0.8,
+                            width: 100,
                           ),
+
                           SpaceSizer(vertical: 2),
 
-                          //Form Password
-                          CustomTextPasswordField(
-                            width: 100,
+                          // INPUT PASSWORD
+                          CustomTextField(
+                            controller: loginController.passwordController,
                             title: 'Password',
-                            titleFontWeight: FontWeight.w600,
-                            isPasswordField: true,
                             hintText: 'Masukkan password',
                             fillColor: AppColors.bgColor.withValues(
                               alpha: 0.05,
                             ),
                             borderRadius: 0.8,
+                            width: 100,
+                            obscureText: isObscure,
+                            maxLines: 1,
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                isObscure
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
+                                color: AppColors.grey,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  isObscure = !isObscure;
+                                });
+                              },
+                            ),
                           ),
 
                           SpaceSizer(vertical: 1.5),
@@ -183,9 +211,7 @@ class LoginPage extends StatelessWidget {
                           Align(
                             alignment: Alignment.centerRight,
                             child: InkWell(
-                              onTap: () {
-                                _showForgotPasswordDialog(context);
-                              },
+                              onTap: () => _showForgotPasswordDialog(context),
                               child: PoppinsTextView(
                                 value: 'Lupa Password?',
                                 color: AppColors.blueDark,
@@ -194,6 +220,7 @@ class LoginPage extends StatelessWidget {
                               ),
                             ),
                           ),
+
                           SpaceSizer(vertical: 3),
 
                           // Tombol Login
@@ -203,12 +230,13 @@ class LoginPage extends StatelessWidget {
                             text: 'Login',
                             radius: 0.8,
                             onTap: () {
-                              router.replaceNamed('dashboard');
+                              loginController.login();
                             },
                             backgroundColor: AppColors.blueDark,
                             textColor: Colors.white,
                             textSize: SizeConfig.safeBlockHorizontal * 0.9,
                           ),
+
                           SpaceSizer(vertical: 5),
 
                           Center(
@@ -232,6 +260,7 @@ class LoginPage extends StatelessWidget {
   }
 }
 
+// Dialog Info Lupa Password
 void _showForgotPasswordDialog(BuildContext context) {
   showDialog(
     context: context,
@@ -244,23 +273,12 @@ void _showForgotPasswordDialog(BuildContext context) {
             SizedBox(width: 10),
             Text(
               "Akses Terbatas",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppColors.black,
-              ),
+              style: TextStyle(fontWeight: FontWeight.bold),
             ),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
-            Text(
-              "Untuk alasan keamanan data medis, reset password tidak dapat dilakukan secara mandiri.",
-              style: TextStyle(height: 1.5),
-            ),
-          ],
+        content: Text(
+          "Untuk alasan keamanan, reset password tidak dapat dilakukan secara mandiri. Silakan hubungi Administrator IT Rumah Sakit.",
         ),
         actions: [
           TextButton(

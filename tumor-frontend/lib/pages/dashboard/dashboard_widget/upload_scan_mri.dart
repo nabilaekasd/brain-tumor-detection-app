@@ -1,123 +1,684 @@
+import 'dart:ui' as ui; // Import penting untuk DottedBorder
 import 'package:axon_vision/controllers/dashboard_controller.dart';
 import 'package:axon_vision/models/data_pasien_model.dart';
 import 'package:axon_vision/pages/global_widgets/custom/custom_flat_button.dart';
+import 'package:axon_vision/pages/global_widgets/custom/custom_text_field.dart';
 import 'package:axon_vision/pages/global_widgets/text_fonts/poppins_text_view.dart';
 import 'package:axon_vision/utils/app_colors.dart';
 import 'package:axon_vision/utils/size_config.dart';
 import 'package:axon_vision/utils/space_sizer.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart'; // Pastikan GetX diimport untuk dialog
 
-class UploadScanMri extends StatelessWidget {
-  final DataPasienModel pasienData;
-  final VoidCallback onBack;
-  final DashboardController dashboardController;
+class UploadScanMri extends StatefulWidget {
   const UploadScanMri({
     super.key,
+    required this.dashboardController,
     required this.pasienData,
     required this.onBack,
-    required this.dashboardController,
   });
+
+  final DashboardController dashboardController;
+  final DataPasienModel pasienData;
+  final VoidCallback onBack;
+
+  @override
+  State<UploadScanMri> createState() => _UploadScanMriState();
+}
+
+class _UploadScanMriState extends State<UploadScanMri> {
+  String? selectedFileName;
+  String selectedMriType = 'T1 Weighted';
+  bool isHovering = false;
+
+  // Logika Tombol Kembali
+  void _handleBackNavigation() {
+    if (selectedFileName != null) {
+      Get.dialog(
+        Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          backgroundColor: Colors.white,
+          elevation: 10,
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.orange.withValues(alpha: 0.3),
+                        blurRadius: 20,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.warning_amber_rounded,
+                    color: Colors.orange,
+                    size: 80,
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                PoppinsTextView(
+                  value: "Batalkan Upload?",
+                  fontWeight: FontWeight.bold,
+                  size: 22,
+                  color: Colors.black87,
+                ),
+                const SizedBox(height: 10),
+
+                PoppinsTextView(
+                  value:
+                      "Anda memiiki file yang belum dikirim.\nJika kembali sekarang, data ini akan hilang.",
+                  textAlign: TextAlign.center,
+                  size: 14,
+                  color: Colors.grey,
+                  height: 1.5,
+                ),
+                const SizedBox(height: 30),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Get.back(),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: AppColors.greyDisabled),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: PoppinsTextView(
+                          value: "Lanjutkan Edit",
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.grey,
+                          size: 14,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 15),
+
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Get.back();
+                          widget.onBack();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.redAccent,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        child: PoppinsTextView(
+                          value: "Ya, Batalkan",
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                          size: 14,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        barrierDismissible: false,
+      );
+    } else {
+      widget.onBack();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        PoppinsTextView(
-          value: 'Upload Scan MRI Baru',
-          size: SizeConfig.safeBlockHorizontal * 1.2,
-          fontWeight: FontWeight.bold,
-        ),
-        PoppinsTextView(
-          value: 'Untuk Pasien: ${pasienData.namePatient}',
-          size: SizeConfig.safeBlockHorizontal * 1.2,
-          fontWeight: FontWeight.bold,
-        ),
-        SpaceSizer(vertical: 5),
+        // === 1. HEADER HALAMAN ===
         Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            SpaceSizer(horizontal: 14),
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.all(
-                  Radius.circular(SizeConfig.horizontal(1.5)),
+            InkWell(
+              onTap: _handleBackNavigation,
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Icon(
+                  Icons.arrow_back_ios_new,
+                  size: 20,
+                  color: AppColors.grey,
                 ),
-                color: AppColors.greyDisabled,
               ),
-              width: SizeConfig.safeBlockHorizontal * 40,
-              height: SizeConfig.safeBlockVertical * 40,
+            ),
+            SpaceSizer(horizontal: 1),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                PoppinsTextView(
+                  value: 'Upload Scan MRI',
+                  size: SizeConfig.safeBlockHorizontal * 1.2,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.blueDark,
+                ),
+                PoppinsTextView(
+                  value: 'Pastikan file dalam format DICOM atau High-Res JPG',
+                  size: SizeConfig.safeBlockHorizontal * 0.8,
+                  color: AppColors.grey,
+                ),
+              ],
+            ),
+          ],
+        ),
+
+        SpaceSizer(vertical: 3),
+
+        // === 2. KONTEN UTAMA (2 KOLOM) ===
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // --- KOLOM KIRI: DATA PASIEN (40%) ---
+            Expanded(
+              flex: 4,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.upload, size: SizeConfig.safeBlockHorizontal * 10),
-                  PoppinsTextView(
-                    value: 'Seret dan letakkan file di sini',
-                    size: SizeConfig.safeBlockHorizontal * 1.2,
-                    fontWeight: FontWeight.bold,
+                  // Kartu Info Pasien
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(SizeConfig.horizontal(1.5)),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.greyDisabled),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.blueDark.withValues(alpha: 0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              backgroundColor: AppColors.blueCard.withValues(
+                                alpha: 0.1,
+                              ),
+                              child: Icon(
+                                Icons.person,
+                                color: AppColors.blueDark,
+                              ),
+                            ),
+                            SpaceSizer(horizontal: 1),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                PoppinsTextView(
+                                  value: widget.pasienData.namePatient,
+                                  fontWeight: FontWeight.bold,
+                                  size: SizeConfig.safeBlockHorizontal * 0.9,
+                                ),
+                                PoppinsTextView(
+                                  value: 'ID: ${widget.pasienData.idPatient}',
+                                  color: AppColors.grey,
+                                  size: SizeConfig.safeBlockHorizontal * 0.75,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        Divider(
+                          height: SizeConfig.vertical(3),
+                          color: AppColors.greyDisabled,
+                        ),
+                        _buildMiniInfo(
+                          'Tanggal Lahir',
+                          widget.pasienData.tanggalLahir,
+                        ),
+                        SpaceSizer(vertical: 1.5),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Status Pasien',
+                              style: TextStyle(
+                                color: AppColors.grey,
+                                fontSize: 12,
+                              ),
+                            ),
+                            _buildStatusBadge(widget.pasienData.status),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                  PoppinsTextView(
-                    value: 'atau',
-                    size: SizeConfig.safeBlockHorizontal * 1.2,
-                    fontWeight: FontWeight.bold,
+
+                  SpaceSizer(vertical: 2),
+
+                  // Kartu Detail Pemeriksaan
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(SizeConfig.horizontal(1.5)),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.greyDisabled),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        PoppinsTextView(
+                          value: 'Detail Pemeriksaan',
+                          fontWeight: FontWeight.w600,
+                          size: SizeConfig.safeBlockHorizontal * 0.9,
+                        ),
+                        SpaceSizer(vertical: 2),
+
+                        PoppinsTextView(
+                          value: 'Jenis Sequence',
+                          size: SizeConfig.safeBlockHorizontal * 0.8,
+                          color: AppColors.grey,
+                        ),
+                        SizedBox(height: 8),
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: AppColors.greyDisabled),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              value: selectedMriType,
+                              isExpanded: true,
+                              items:
+                                  [
+                                        'T1 Weighted',
+                                        'T2 Weighted',
+                                        'FLAIR',
+                                        'Diffusion',
+                                      ]
+                                      .map(
+                                        (String value) => DropdownMenuItem(
+                                          value: value,
+                                          child: Text(
+                                            value,
+                                            style: TextStyle(fontSize: 14),
+                                          ),
+                                        ),
+                                      )
+                                      .toList(),
+                              onChanged: (v) =>
+                                  setState(() => selectedMriType = v!),
+                            ),
+                          ),
+                        ),
+
+                        SpaceSizer(vertical: 2),
+
+                        CustomTextField(
+                          width: 100,
+                          title: 'Catatan Klinis',
+                          hintText: 'Tulis keluhan atau catatan...',
+                          borderRadius: 0.5,
+                          textSize: SizeConfig.safeBlockHorizontal * 0.8,
+                          hintTextSize: SizeConfig.safeBlockHorizontal * 0.75,
+                          fillColor: AppColors.greySecond.withValues(
+                            alpha: 0.05,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  CustomFlatButton(
-                    text: 'Pilih File',
-                    onTap: () {},
-                    radius: 0.5,
-                    width: SizeConfig.blockSizeHorizontal * 9,
-                    height: SizeConfig.blockSizeHorizontal * 2,
-                    backgroundColor: AppColors.bgColor,
-                    icon: Icons.add,
-                    colorIconImage: AppColors.white,
-                    textSize: SizeConfig.safeBlockHorizontal * 1.2,
+                ],
+              ),
+            ),
+
+            SpaceSizer(horizontal: 3),
+
+            // --- KOLOM KANAN: UPLOAD AREA (60%) ---
+            Expanded(
+              flex: 6,
+              child: Column(
+                children: [
+                  InkWell(
+                    onTap: () {
+                      setState(() {
+                        selectedFileName =
+                            "MRI_Brain_${widget.pasienData.idPatient}.dcm";
+                      });
+                    },
+                    onHover: (val) {
+                      setState(() => isHovering = val);
+                    },
+                    child: CustomPaint(
+                      painter: DottedBorderPainter(
+                        color: isHovering ? AppColors.blueDark : AppColors.grey,
+                      ),
+                      child: Container(
+                        width: double.infinity,
+                        height: SizeConfig.safeBlockVertical * 55,
+                        decoration: BoxDecoration(
+                          color: isHovering
+                              ? AppColors.blueCard.withValues(alpha: 0.05)
+                              : AppColors.greySecond.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: selectedFileName == null
+                            ? _buildEmptyState()
+                            : _buildSelectedState(),
+                      ),
+                    ),
+                  ),
+
+                  SpaceSizer(vertical: 3),
+
+                  // TOMBOL AKSI
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      // Tombol Batal
+                      CustomFlatButton(
+                        text: 'Batalkan',
+                        onTap: _handleBackNavigation,
+                        width: SizeConfig.blockSizeHorizontal * 8,
+                        height: SizeConfig.safeBlockVertical * 6.0,
+                        backgroundColor: Colors.white,
+                        borderColor: AppColors.grey,
+                        textColor: AppColors.grey,
+                        radius: 0.8,
+                        textSize: SizeConfig.safeBlockHorizontal * 0.75,
+                      ),
+                      SpaceSizer(horizontal: 2),
+
+                      // Tombol Mulai Analisis (DENGAN POPUP REVISI)
+                      CustomFlatButton(
+                        text: 'Mulai Analisis',
+                        onTap: () {
+                          if (selectedFileName != null) {
+                            Get.dialog(
+                              Dialog(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                backgroundColor: Colors.white,
+                                elevation: 10,
+                                child: Container(
+                                  padding: const EdgeInsets.all(20),
+                                  width: 400,
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: Colors.white,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: const Color(
+                                                0xFF4CAF50,
+                                              ).withValues(alpha: 0.3),
+                                              blurRadius: 20,
+                                              offset: const Offset(0, 5),
+                                            ),
+                                          ],
+                                        ),
+                                        child: const Icon(
+                                          Icons.check_circle,
+                                          color: Color(0xFF4CAF50),
+                                          size: 80,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 20),
+
+                                      PoppinsTextView(
+                                        value: "Berhasil Dikirim",
+                                        fontWeight: FontWeight.bold,
+                                        size: 22,
+                                        color: AppColors.blueDark,
+                                      ),
+                                      const SizedBox(height: 10),
+
+                                      PoppinsTextView(
+                                        value:
+                                            "File MRI sedang dalam antrean analisis AI.\nAnda akan menerima notifikasi saat hasil siap.",
+                                        textAlign: TextAlign.center,
+                                        size: 14,
+                                        color: Colors.grey,
+                                        height: 1.5,
+                                      ),
+                                      const SizedBox(height: 30),
+
+                                      SizedBox(
+                                        width: double.infinity,
+                                        child: ElevatedButton(
+                                          onPressed: () {
+                                            Get.back();
+                                            widget.dashboardController
+                                                .backToPasienList();
+                                          },
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: AppColors.blueDark,
+                                            foregroundColor: Colors.white,
+                                            elevation: 0,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 16,
+                                            ),
+                                          ),
+                                          child: PoppinsTextView(
+                                            value: "Selesai",
+                                            fontWeight: FontWeight.w600,
+                                            size: 15,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              barrierDismissible: false,
+                            );
+                          } else {
+                            // Popup Error jika belum pilih file
+                            Get.snackbar(
+                              "Belum ada file",
+                              "Harap pilih atau drag file MRI terlebih dahulu!",
+                              backgroundColor: Colors.redAccent,
+                              colorText: Colors.white,
+                              snackPosition: SnackPosition.TOP,
+                              margin: EdgeInsets.all(20),
+                              borderRadius: 10,
+                            );
+                          }
+                        },
+                        width: SizeConfig.blockSizeHorizontal * 12,
+                        height: SizeConfig.safeBlockVertical * 6.0,
+                        backgroundColor: selectedFileName != null
+                            ? AppColors.blueDark
+                            : AppColors.greyDisabled,
+                        textColor: Colors.white,
+                        radius: 0.8,
+                        textSize: SizeConfig.safeBlockHorizontal * 0.75,
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
           ],
         ),
-        Row(
-          children: [
-            SpaceSizer(horizontal: 14),
-            PoppinsTextView(
-              value: 'Format: .dcm, .nii. Ukuran maks: 500MB',
-              size: SizeConfig.safeBlockHorizontal * 0.8,
-            ),
-          ],
-        ),
-        SpaceSizer(vertical: 6),
-        Row(
-          children: [
-            SpaceSizer(horizontal: 19),
-            CustomFlatButton(
-              text: 'Batal',
-              onTap: () {},
-              radius: 1,
-              width: SizeConfig.blockSizeHorizontal * 10,
-              height: SizeConfig.blockSizeHorizontal * 3,
-              backgroundColor: AppColors.greyDisabled,
-              colorIconImage: AppColors.white,
-              textColor: AppColors.black,
-              textSize: SizeConfig.safeBlockHorizontal * 1.2,
-            ),
-            SpaceSizer(horizontal: 1),
-            CustomFlatButton(
-              text: 'Upload dan Mulai Analisis',
-              onTap: () {
-                dashboardController.changeMenu(4);
-              },
-              radius: 1,
-              width: SizeConfig.blockSizeHorizontal * 20,
-              height: SizeConfig.blockSizeHorizontal * 3,
-              backgroundColor: AppColors.bgColor,
-              colorIconImage: AppColors.white,
-              textSize: SizeConfig.safeBlockHorizontal * 1.2, //lanjut
-            ),
-          ],
-        ),
-        SpaceSizer(vertical: 10),
       ],
     );
   }
+
+  // --- WIDGET HELPER ---
+
+  Widget _buildMiniInfo(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: TextStyle(color: AppColors.grey, fontSize: 12)),
+        Text(
+          value,
+          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatusBadge(String status) {
+    bool isActive = status.toLowerCase() == 'aktif';
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: isActive
+            ? Colors.green.withValues(alpha: 0.1)
+            : Colors.red.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: isActive ? Colors.green : Colors.red,
+          width: 0.5,
+        ),
+      ),
+      child: Text(
+        status,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          color: isActive ? Colors.green : Colors.red,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          padding: EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 15,
+                offset: Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Icon(
+            Icons.cloud_upload_rounded,
+            size: SizeConfig.safeBlockHorizontal * 4,
+            color: AppColors.blueDark,
+          ),
+        ),
+        SpaceSizer(vertical: 2),
+        PoppinsTextView(
+          value: 'Drag & Drop file MRI di sini',
+          size: SizeConfig.safeBlockHorizontal * 1.1,
+          fontWeight: FontWeight.bold,
+          color: AppColors.black,
+        ),
+        SpaceSizer(vertical: 1),
+        PoppinsTextView(
+          value: 'atau klik untuk menjelajah file komputer',
+          size: SizeConfig.safeBlockHorizontal * 0.8,
+          color: AppColors.grey,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSelectedState() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.insert_drive_file, size: 60, color: AppColors.blueDark),
+        SpaceSizer(vertical: 2),
+        PoppinsTextView(
+          value: selectedFileName!,
+          size: SizeConfig.safeBlockHorizontal * 1.0,
+          fontWeight: FontWeight.bold,
+        ),
+        PoppinsTextView(
+          value: '12.5 MB • Siap diupload',
+          size: SizeConfig.safeBlockHorizontal * 0.8,
+          color: Colors.green,
+        ),
+        SpaceSizer(vertical: 2),
+        TextButton.icon(
+          onPressed: () => setState(() => selectedFileName = null),
+          icon: Icon(Icons.close, color: Colors.red),
+          label: Text('Ganti File', style: TextStyle(color: Colors.red)),
+        ),
+      ],
+    );
+  }
+}
+
+// Painter untuk garis putus-putus
+class DottedBorderPainter extends CustomPainter {
+  final Color color;
+  DottedBorderPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint paint = Paint()
+      ..color = color
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+
+    final double dashWidth = 8;
+    final double dashSpace = 6;
+    final double radius = 16;
+
+    Path path = Path()
+      ..addRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(0, 0, size.width, size.height),
+          Radius.circular(radius),
+        ),
+      );
+
+    Path dashPath = Path();
+    double distance = 0.0;
+
+    for (ui.PathMetric pathMetric in path.computeMetrics()) {
+      while (distance < pathMetric.length) {
+        dashPath.addPath(
+          pathMetric.extractPath(distance, distance + dashWidth),
+          Offset.zero,
+        );
+        distance += dashWidth + dashSpace;
+      }
+    }
+    canvas.drawPath(dashPath, paint);
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => true;
 }

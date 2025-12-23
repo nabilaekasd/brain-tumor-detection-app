@@ -19,6 +19,7 @@ class DashboardController extends GetxController {
 
   final RxBool isSearching = RxBool(false);
   final int pageSize = 10;
+  final RxInt currentPage = 1.obs;
   final RxInt _activeMenuIndex = 0.obs;
   final RxBool isSidebarExpanded = true.obs;
   final String userRole = 'radiolog';
@@ -36,14 +37,7 @@ class DashboardController extends GetxController {
     analisisData = getAnalisisData();
     analisisDataSource = AnalisisDataSource(analisisData);
     originalPasienData = List.from(pasienData);
-    pasienDataSource = PasienDataSource(
-      dataPasien: pasienData,
-      userRole: userRole,
-      onUploadTap: handledChangeScreenDynamic,
-      onDetailTap: (pasien) {
-        log("Dokter melihat: ${pasien.namePatient}");
-      },
-    );
+    refreshPasienDataSource();
     homePasienDataSource = PasienDataSource(
       dataPasien: pasienData.take(5).toList(),
       userRole: userRole,
@@ -77,18 +71,51 @@ class DashboardController extends GetxController {
     update();
   }
 
-  // Method update status filter
+  List<DataPasienModel> get _currentPaginatedData {
+    int start = (currentPage.value - 1) * pageSize;
+    int end = start + pageSize;
+
+    if (end > pasienData.length) end = pasienData.length;
+    if (start >= pasienData.length) return [];
+    return pasienData.sublist(start, end);
+  }
+
+  void refreshPasienDataSource() {
+    pasienDataSource = PasienDataSource(
+      dataPasien: _currentPaginatedData,
+      userRole: userRole,
+      onUploadTap: handledChangeScreenDynamic,
+      onDetailTap: (pasien) {
+        log("Dokter melihat: ${pasien.namePatient}");
+      },
+    );
+    update();
+  }
+
+  void nextPage() {
+    if (currentPage.value < getPasienPageCount()) {
+      currentPage.value++;
+      refreshPasienDataSource();
+    }
+  }
+
+  void previousPage() {
+    if (currentPage.value > 1) {
+      currentPage.value--;
+      refreshPasienDataSource();
+    }
+  }
+
   void updateStatusFilter(String status) {
     selectedStatusFilter = status;
     searchPatients(searchController.text);
   }
 
-  // Method untuk mencari pasien
   void searchPatients(String query) {
     isSearching.value = true;
+    currentPage.value = 1;
 
     List<DataPasienModel> filtered = List.from(originalPasienData);
-
     if (selectedStatusFilter != 'Semua Status') {
       filtered = filtered
           .where(
@@ -108,21 +135,12 @@ class DashboardController extends GetxController {
       }).toList();
     }
     pasienData = filtered;
-
-    pasienDataSource = PasienDataSource(
-      dataPasien: pasienData,
-      userRole: userRole,
-      onUploadTap: handledChangeScreenDynamic,
-      onDetailTap: (pasien) {
-        log("Detail filter: ${pasien.namePatient}");
-      },
-    );
-
-    update();
+    refreshPasienDataSource();
   }
 
   double getPasienPageCount() {
-    return (pasienData.length / pageSize).ceilToDouble();
+    if (pasienData.isEmpty) return 1;
+    return (analisisData.length / pageSize).ceilToDouble();
   }
 
   double getAnalisisPageCount() {
@@ -131,85 +149,16 @@ class DashboardController extends GetxController {
 
   //Dummy Data
   List<DataPasienModel> getPasienData() {
-    return [
-      DataPasienModel(
-        idPatient: 'P001',
-        namePatient: 'Abdul',
-        tanggalLahir: 'DD/MM/YYYY',
-        status: 'Aktif',
+    return List.generate(25, (index) {
+      int id = index + 1;
+      return DataPasienModel(
+        idPatient: 'P${id.toString().padLeft(3, '0')}',
+        namePatient: index % 2 == 0 ? 'Dirman Santoso $id' : 'Dita Aminah $id',
+        tanggalLahir: '12/05/1980',
+        status: index % 3 == 0 ? 'Tidak Aktif' : 'Aktif',
         action: 'icon',
-      ),
-      DataPasienModel(
-        idPatient: 'P002',
-        namePatient: 'Togar',
-        tanggalLahir: 'DD/MM/YYYY',
-        status: 'Aktif',
-        action: 'icon',
-      ),
-      DataPasienModel(
-        idPatient: 'P003',
-        namePatient: 'Siti',
-        tanggalLahir: 'DD/MM/YYYY',
-        status: 'Aktif',
-        action: 'icon',
-      ),
-      DataPasienModel(
-        idPatient: 'P004',
-        namePatient: 'Dewi',
-        tanggalLahir: 'DD/MM/YYYY',
-        status: 'Aktif',
-        action: 'icon',
-      ),
-      DataPasienModel(
-        idPatient: 'P005',
-        namePatient: 'Hidayat',
-        tanggalLahir: 'DD/MM/YYYY',
-        status: 'Aktif',
-        action: 'icon',
-      ),
-      DataPasienModel(
-        idPatient: 'P006',
-        namePatient: 'Oyen',
-        tanggalLahir: 'DD/MM/YYYY',
-        status: 'Aktif',
-        action: 'icon',
-      ),
-      DataPasienModel(
-        idPatient: 'P007',
-        namePatient: 'Santoso',
-        tanggalLahir: 'DD/MM/YYYY',
-        status: 'Aktif',
-        action: 'icon',
-      ),
-      DataPasienModel(
-        idPatient: 'P008',
-        namePatient: 'Santoso',
-        tanggalLahir: 'DD/MM/YYYY',
-        status: 'Tidak Aktif',
-        action: 'icon',
-      ),
-      DataPasienModel(
-        idPatient: 'P009',
-        namePatient: 'Santoso',
-        tanggalLahir: 'DD/MM/YYYY',
-        status: 'Aktif',
-        action: 'icon',
-      ),
-      DataPasienModel(
-        idPatient: 'P0010',
-        namePatient: 'Santoso',
-        tanggalLahir: 'DD/MM/YYYY',
-        status: 'Aktif',
-        action: 'icon',
-      ),
-      DataPasienModel(
-        idPatient: 'P0011',
-        namePatient: 'Santoso',
-        tanggalLahir: 'DD/MM/YYYY',
-        status: 'Aktif',
-        action: 'icon',
-      ),
-    ];
+      );
+    });
   }
 
   //Dummy Data
@@ -225,7 +174,7 @@ class DashboardController extends GetxController {
         namePatient: 'Joko',
         tanggalScan: 'DD/MM/YYYY',
         status: 'Menunggu',
-        estimasi: '30 Menit',
+        estimasi: '45 Menit',
       ),
       DataAnalisisModel(
         namePatient: 'Karang',

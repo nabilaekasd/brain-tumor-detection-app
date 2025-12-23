@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class PoppinsTextView extends StatelessWidget {
-  // constructor
   const PoppinsTextView({
     super.key,
     required this.value,
@@ -14,9 +13,12 @@ class PoppinsTextView extends StatelessWidget {
     this.fontStyle,
     this.fontWeight,
     this.alignText,
+    this.textAlign,
     this.overFlow,
     this.textDecoration,
     this.decorationColor,
+    this.maxLines,
+    this.height,
   });
 
   final String value;
@@ -25,14 +27,30 @@ class PoppinsTextView extends StatelessWidget {
   final FontStyle? fontStyle;
   final FontWeight? fontWeight;
   final AlignTextType? alignText;
+  final TextAlign? textAlign;
   final TextOverflow? overFlow;
   final TextDecoration? textDecoration;
   final Color? decorationColor;
+  final int? maxLines;
+  final double? height;
+
   @override
   Widget build(BuildContext context) {
+    TextAlign finalAlign =
+        textAlign ??
+        (alignText == AlignTextType.center
+            ? TextAlign.center
+            : alignText == AlignTextType.right
+            ? TextAlign.right
+            : alignText == AlignTextType.justify
+            ? TextAlign.justify
+            : TextAlign.left);
+
     return Text(
       value,
       overflow: overFlow,
+      maxLines: maxLines,
+      textAlign: finalAlign,
       style: GoogleFonts.poppins(
         decoration: textDecoration,
         decorationColor: decorationColor,
@@ -40,12 +58,8 @@ class PoppinsTextView extends StatelessWidget {
         fontSize: size ?? SizeConfig.safeBlockHorizontal * 4,
         fontStyle: fontStyle ?? FontStyle.normal,
         fontWeight: fontWeight ?? FontWeight.normal,
+        height: height,
       ),
-      textAlign: alignText == AlignTextType.center
-          ? TextAlign.center
-          : alignText == AlignTextType.right
-          ? TextAlign.right
-          : TextAlign.left,
     );
   }
 }

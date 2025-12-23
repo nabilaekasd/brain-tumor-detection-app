@@ -8,13 +8,13 @@ import 'package:axon_vision/pages/dashboard/dashboard_widget/upload_scan_mri.dar
 import 'package:axon_vision/pages/dashboard/dashboard_widget/daftar_pasien_menu.dart';
 import 'package:axon_vision/pages/global_widgets/frame/frame_scaffold.dart';
 import 'package:axon_vision/pages/global_widgets/text_fonts/poppins_text_view.dart';
+import 'package:axon_vision/pages/login/login_page.dart';
 import 'package:axon_vision/utils/app_colors.dart';
 import 'package:axon_vision/utils/asset_list.dart';
 import 'package:axon_vision/utils/size_config.dart';
 import 'package:axon_vision/utils/space_sizer.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:go_router/go_router.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -53,7 +53,7 @@ class DashboardPage extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // SIDEBAR ANIMATED
+                // SIDEBAR KIRI
                 Obx(
                   () => AnimatedContainer(
                     duration: const Duration(milliseconds: 300),
@@ -72,14 +72,12 @@ class DashboardPage extends StatelessWidget {
                         ),
                       ),
                     ),
-
                     child: SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: SizedBox(
                         width: SizeConfig.safeBlockHorizontal * 15,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-
                           children: [
                             Padding(
                               padding: EdgeInsets.only(
@@ -112,6 +110,8 @@ class DashboardPage extends StatelessWidget {
                     ),
                   ),
                 ),
+
+                // GARIS PEMBATAS
                 Obx(
                   () => dashboardController.isSidebarExpanded.value
                       ? Container(
@@ -125,11 +125,11 @@ class DashboardPage extends StatelessWidget {
                       : const SizedBox.shrink(),
                 ),
 
-                // AREA KONTEN (KANAN)
+                // AREA KONTEN KANAN
                 Expanded(
                   child: Column(
                     children: [
-                      // FIXED HEADER
+                      // HEADER
                       Container(
                         padding: EdgeInsets.symmetric(
                           vertical: SizeConfig.vertical(2),
@@ -149,7 +149,6 @@ class DashboardPage extends StatelessWidget {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            //TOMBOL MENU
                             IconButton(
                               onPressed: () {
                                 dashboardController.toggleSidebar();
@@ -173,6 +172,7 @@ class DashboardPage extends StatelessWidget {
                               size: SizeConfig.safeBlockHorizontal * 1.2,
                               fontWeight: FontWeight.bold,
                             ),
+
                             const Spacer(),
 
                             PoppinsTextView(
@@ -182,48 +182,62 @@ class DashboardPage extends StatelessWidget {
                             ),
                             SpaceSizer(horizontal: 1),
 
-                            // INFO USER
+                            // POPUP MENU USER (AVATAR)
                             PopupMenuButton<String>(
                               offset: const Offset(0, 50),
                               tooltip: 'Profil Menu',
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius: BorderRadius.circular(12),
                               ),
-                              onSelected: (value) {
-                                if (value == 'notifikasi') {
-                                  debugPrint("Buka Notifikasi");
-                                } else if (value == 'logout') {
-                                  context.goNamed('login');
-                                }
-                              },
                               itemBuilder: (BuildContext context) =>
                                   <PopupMenuEntry<String>>[
+                                    // HAPUS CONST DI SINI
+                                    const PopupMenuItem<String>(
+                                      value: 'profil',
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.person_outline,
+                                            color: Colors.grey,
+                                          ),
+                                          SizedBox(width: 10),
+                                          PoppinsTextView(
+                                            value: 'Profil Saya',
+                                            color: Colors.black87,
+                                            size: 14,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                     PopupMenuItem<String>(
                                       value: 'notifikasi',
                                       child: Row(
                                         children: [
                                           Icon(
                                             Icons.notifications_outlined,
-                                            color: AppColors.blueDark,
-                                            size: 20,
+                                            color: Colors.grey,
                                           ),
-                                          const SizedBox(width: 10),
-                                          const Text('Notifikasi'),
-                                          const Spacer(),
-
+                                          SizedBox(width: 10),
+                                          PoppinsTextView(
+                                            value: 'Notifikasi',
+                                            color: Colors.black87,
+                                            size: 14,
+                                          ),
+                                          Spacer(),
                                           if (notificationCount > 0)
                                             Container(
                                               padding: const EdgeInsets.all(6),
-                                              decoration: BoxDecoration(
-                                                color: AppColors.redAlert,
+                                              decoration: const BoxDecoration(
+                                                color: Colors.redAccent,
                                                 shape: BoxShape.circle,
                                               ),
-                                              child: Text(
-                                                '$notificationCount',
-                                                style: const TextStyle(
+                                              child: Center(
+                                                child: PoppinsTextView(
+                                                  value: '$notificationCount',
                                                   color: Colors.white,
-                                                  fontSize: 10,
+                                                  size: 10,
                                                   fontWeight: FontWeight.bold,
+                                                  textAlign: TextAlign.center,
                                                 ),
                                               ),
                                             ),
@@ -231,51 +245,199 @@ class DashboardPage extends StatelessWidget {
                                       ),
                                     ),
                                     const PopupMenuDivider(),
-                                    PopupMenuItem<String>(
+                                    // HAPUS CONST DI SINI
+                                    const PopupMenuItem<String>(
                                       value: 'logout',
                                       child: Row(
                                         children: [
                                           Icon(
                                             Icons.logout,
-                                            color: AppColors.redAlert,
+                                            color: Colors.redAccent,
                                             size: 20,
                                           ),
-                                          const SizedBox(width: 10),
-                                          Text(
-                                            'Logout',
-                                            style: TextStyle(
-                                              color: AppColors.redAlert,
-                                            ),
+                                          SizedBox(width: 10),
+                                          PoppinsTextView(
+                                            value: 'Keluar',
+                                            color: Colors.redAccent,
+                                            fontWeight: FontWeight.w600,
+                                            size: 14,
                                           ),
                                         ],
                                       ),
                                     ),
                                   ],
-                              child: Badge(
-                                isLabelVisible: notificationCount > 0,
-                                label: Text('$notificationCount'),
-                                backgroundColor: AppColors.redAlert,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 4,
-                                ),
-                                child: Container(
-                                  padding: const EdgeInsets.all(2),
-                                  decoration: const BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.transparent,
-                                  ),
-                                  child: CircleAvatar(
-                                    radius:
-                                        SizeConfig.safeBlockHorizontal * 1.3,
-                                    backgroundColor: AppColors.bgColor,
+                              onSelected: (value) {
+                                if (value == 'profil') {
+                                  dashboardController.changeMenu(5);
+                                } else if (value == 'logout') {
+                                  // POPUP LOGOUT
+                                  Get.dialog(
+                                    Dialog(
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      backgroundColor: Colors.white,
+                                      elevation: 10,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(20),
+                                        width: 400,
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.all(4),
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                color: Colors.white,
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: Colors.redAccent
+                                                        .withValues(alpha: 0.3),
+                                                    blurRadius: 20,
+                                                    offset: const Offset(0, 5),
+                                                  ),
+                                                ],
+                                              ),
+                                              child: const Icon(
+                                                Icons.logout_rounded,
+                                                color: Colors.redAccent,
+                                                size: 80,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 20),
+
+                                            PoppinsTextView(
+                                              value: "Konfirmasi Logout",
+                                              fontWeight: FontWeight.bold,
+                                              size: 22,
+                                              color: Colors.black87,
+                                            ),
+                                            const SizedBox(height: 10),
+
+                                            PoppinsTextView(
+                                              value:
+                                                  "Apakah Anda yakin ingin keluar dari aplikasi?\nSesi Anda akan diakhiri.",
+                                              textAlign: TextAlign.center,
+                                              size: 14,
+                                              color: Colors.grey,
+                                              height: 1.5,
+                                            ),
+                                            const SizedBox(height: 30),
+
+                                            Row(
+                                              children: [
+                                                Expanded(
+                                                  child: OutlinedButton(
+                                                    onPressed: () => Get.back(),
+                                                    style: OutlinedButton.styleFrom(
+                                                      side: BorderSide(
+                                                        color: AppColors
+                                                            .greyDisabled,
+                                                      ),
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            vertical: 16,
+                                                          ),
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              12,
+                                                            ),
+                                                      ),
+                                                    ),
+
+                                                    child: PoppinsTextView(
+                                                      value: "Batal",
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color: AppColors.grey,
+                                                      size: 14,
+                                                    ),
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 15),
+                                                Expanded(
+                                                  child: ElevatedButton(
+                                                    onPressed: () {
+                                                      Get.back();
+                                                      Get.offAll(
+                                                        () => const LoginPage(),
+                                                      );
+                                                    },
+                                                    style: ElevatedButton.styleFrom(
+                                                      backgroundColor:
+                                                          Colors.redAccent,
+                                                      foregroundColor:
+                                                          Colors.white,
+                                                      elevation: 0,
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              12,
+                                                            ),
+                                                      ),
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            vertical: 16,
+                                                          ),
+                                                    ),
+
+                                                    child: PoppinsTextView(
+                                                      value: "Ya, Keluar",
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color: Colors.white,
+                                                      size: 14,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    barrierDismissible: false,
+                                  );
+                                }
+                              },
+                              child: Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  CircleAvatar(
+                                    backgroundColor: AppColors.blueCard
+                                        .withValues(alpha: 0.1),
+                                    radius: 22,
                                     child: Icon(
                                       Icons.person,
-                                      color: Colors.white,
-                                      size:
-                                          SizeConfig.safeBlockHorizontal * 1.3,
+                                      color: AppColors.blueDark,
                                     ),
                                   ),
-                                ),
+                                  Positioned(
+                                    right: -2,
+                                    top: -2,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: const BoxDecoration(
+                                        color: Colors.red,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      constraints: const BoxConstraints(
+                                        minWidth: 18,
+                                        minHeight: 18,
+                                      ),
+                                      child: Text(
+                                        '$notificationCount',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                             SpaceSizer(horizontal: 1),
@@ -283,7 +445,7 @@ class DashboardPage extends StatelessWidget {
                         ),
                       ),
 
-                      //SCROLLABLE CONTENT
+                      // ISI KONTEN
                       Expanded(
                         child: SingleChildScrollView(
                           padding: EdgeInsets.symmetric(

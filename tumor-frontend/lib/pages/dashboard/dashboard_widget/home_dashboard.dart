@@ -57,7 +57,6 @@ class Home extends StatelessWidget {
 
           SpaceSizer(vertical: 4),
 
-          // HEADER DAFTAR PASIEN DAN TOMBOL LIHAT SEMUA
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -72,7 +71,6 @@ class Home extends StatelessWidget {
                 onTap: () {
                   dashboardController.changeMenu(1);
                 },
-                // Ukuran Tombol
                 width: SizeConfig.safeBlockHorizontal * 10,
                 height: SizeConfig.safeBlockVertical * 4,
                 backgroundColor: AppColors.blueDark,
@@ -103,7 +101,7 @@ class Home extends StatelessWidget {
                 : const DashboardTabelDataPasien(isHideID: true),
           ),
 
-          SpaceSizer(vertical: 4), // Jarak lega ke seksi berikutnya
+          SpaceSizer(vertical: 4),
           // HEADER SCAN ANALISIS DAN TOMBOL REFRESH
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,

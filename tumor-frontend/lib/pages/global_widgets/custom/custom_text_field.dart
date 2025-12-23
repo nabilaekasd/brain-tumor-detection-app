@@ -1,130 +1,126 @@
+import 'package:axon_vision/pages/global_widgets/text_fonts/poppins_text_view.dart';
 import 'package:axon_vision/utils/app_colors.dart';
 import 'package:axon_vision/utils/size_config.dart';
+import 'package:axon_vision/utils/space_sizer.dart';
 import 'package:flutter/material.dart';
-
-import '../text_fonts/inter_text_view.dart';
+import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class CustomTextField extends StatelessWidget {
   const CustomTextField({
     super.key,
-    required this.title,
-    this.height,
-    this.titleFontWeight,
-    this.hintTextFontweight,
-    this.hintTextSize,
     this.width,
-    this.textSize,
-    this.borderRadius,
-    this.labelText,
-    this.hintText,
-    this.textColor,
-    this.hintTextColor,
-    this.borderColor,
-    this.borderSideColor,
-    this.isPasswordField = false,
-    this.suffixIcon,
-    this.onChanged,
-    this.autofillHint,
-    this.textInputAction,
-    this.contentPadding,
-    this.prefixIcon,
+    required this.title,
     this.controller,
-    this.passwordController,
-    this.textAlignVertical,
-    this.onFieldSubmitted,
-    this.minLines,
+    this.hintText,
     this.fillColor,
-    this.focus,
-    this.style,
+    this.prefixIcon,
+    this.suffixIcon,
     this.keyboardType,
+    this.inputFormatter,
+    this.borderRadius,
+    this.textSize,
+    this.hintTextSize,
+    this.hintTextFontweight,
+    this.titleTextSize,
+    this.titleFontWeight,
+    this.minLines,
+    this.maxLines,
+    this.obscureText = false,
+    this.onChanged,
   });
-  final String title;
-  final double? height;
-  final FontWeight? titleFontWeight;
-  final FontWeight? hintTextFontweight;
+
   final double? width;
+  final String title;
+  final String? hintText;
+  final TextEditingController? controller;
+  final Color? fillColor;
+  final Widget? prefixIcon;
+  final Widget? suffixIcon;
+  final TextInputType? keyboardType;
+  final List<TextInputFormatter>? inputFormatter;
+  final double? borderRadius;
   final double? textSize;
   final double? hintTextSize;
-  final double? borderRadius;
-  final String? labelText;
-  final String? hintText;
-  final Color? textColor;
-  final Color? hintTextColor;
-  final Color? borderColor;
-  final Color? fillColor;
-  final Color? borderSideColor;
-  final bool? isPasswordField;
-  final Widget? suffixIcon;
-  final Function(String)? onChanged;
-  final Iterable<String>? autofillHint;
-  final TextInputAction? textInputAction;
-  final EdgeInsetsGeometry? contentPadding;
-  final Widget? prefixIcon;
-  final TextEditingController? controller;
-  final TextEditingController? passwordController;
-  final TextAlignVertical? textAlignVertical;
-  final Function(String)? onFieldSubmitted;
+  final FontWeight? hintTextFontweight;
+  final double? titleTextSize;
+  final FontWeight? titleFontWeight;
   final int? minLines;
-  final FocusNode? focus;
-  final TextStyle? style;
-  final TextInputType? keyboardType;
+  final int? maxLines;
+  final bool obscureText;
+  final Function(String)? onChanged;
+
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        if (title == '')
-          const SizedBox.shrink()
-        else
-          InterTextView(
-            value: title,
-            size: textSize ?? SizeConfig.safeBlockHorizontal * 0.9,
-            fontWeight: titleFontWeight ?? FontWeight.w500,
-            color: textColor ?? AppColors.black,
-          ),
+    return SizedBox(
+      width: width != null
+          ? SizeConfig.safeBlockHorizontal * width!
+          : double.infinity,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (title.isNotEmpty) ...[
+            PoppinsTextView(
+              value: title,
+              size: titleTextSize ?? SizeConfig.safeBlockHorizontal * 0.9,
+              fontWeight: titleFontWeight ?? FontWeight.w600,
+              color: AppColors.black,
+            ),
+            SpaceSizer(vertical: 1),
+          ],
 
-        SizedBox(height: SizeConfig.vertical(1)),
-
-        SizedBox(
-          width: SizeConfig.horizontal(width ?? 25),
-          height: height ?? SizeConfig.vertical(7),
-          // ignore: use_if_null_to_convert_nulls_to_bools
-          child: TextFormField(
-            autofillHints: autofillHint,
-            minLines: minLines,
+          TextFormField(
             controller: controller,
-
-            focusNode: focus,
+            keyboardType: keyboardType,
+            inputFormatters: inputFormatter,
+            minLines: minLines ?? 1,
+            maxLines: obscureText ? 1 : (maxLines ?? 1),
+            obscureText: obscureText,
             onChanged: onChanged,
-            keyboardType: TextInputType.text,
-            textInputAction: textInputAction,
+            style: GoogleFonts.poppins(
+              fontSize: textSize ?? SizeConfig.safeBlockHorizontal * 0.9,
+              color: AppColors.black,
+            ),
             decoration: InputDecoration(
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.all(
-                  Radius.circular(SizeConfig.horizontal(borderRadius ?? 0.5)),
-                ),
+              isDense: true,
+              filled: true,
+              fillColor: fillColor ?? Colors.white,
+              hintText: hintText,
+              hintStyle: GoogleFonts.poppins(
+                fontSize: hintTextSize ?? SizeConfig.safeBlockHorizontal * 0.8,
+                fontWeight: hintTextFontweight ?? FontWeight.normal,
+                color: AppColors.grey,
               ),
               prefixIcon: prefixIcon,
-              contentPadding: EdgeInsets.only(left: 10),
-              fillColor: fillColor ?? AppColors.greyDisabled,
-              filled: true,
-              border: OutlineInputBorder(
-                borderSide: BorderSide(color: AppColors.bgColor),
-                borderRadius: BorderRadius.all(
-                  Radius.circular(SizeConfig.horizontal(borderRadius ?? 0.5)),
-                ),
+              suffixIcon: suffixIcon,
+
+              contentPadding: EdgeInsets.symmetric(
+                vertical: SizeConfig.safeBlockVertical * 2.0,
+                horizontal: SizeConfig.safeBlockHorizontal * 1.5,
               ),
-              labelText: hintText,
-              floatingLabelBehavior: FloatingLabelBehavior.never,
-              labelStyle: InterStyle(
-                textHintColor: hintTextColor,
-                hintTextSize: hintTextSize,
-                fontWeightHintText: hintTextFontweight,
-              ).labelStyle(),
+
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(
+                  SizeConfig.safeBlockHorizontal * (borderRadius ?? 0.8),
+                ),
+                borderSide: BorderSide(color: AppColors.greyDisabled),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(
+                  SizeConfig.safeBlockHorizontal * (borderRadius ?? 0.8),
+                ),
+                borderSide: BorderSide(color: AppColors.greyDisabled),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(
+                  SizeConfig.safeBlockHorizontal * (borderRadius ?? 0.8),
+                ),
+                borderSide: BorderSide(color: AppColors.blueDark),
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

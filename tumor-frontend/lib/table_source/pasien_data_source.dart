@@ -63,17 +63,13 @@ class PasienDataSource extends DataGridSource {
                 }
               },
               child: Tooltip(
-                message: userRole == 'radiolog'
-                    ? 'Upload Scan MRI'
-                    : 'Lihat Detail Pasien',
+                message: 'Lihat Detail Pasien',
                 child: Padding(
                   padding: EdgeInsets.all(SizeConfig.horizontal(0.5)),
                   child: Icon(
-                    userRole == 'radiolog'
-                        ? Icons.file_upload_outlined
-                        : Icons.description_outlined,
+                    Icons.description_outlined,
                     color: AppColors.grey,
-                    size: SizeConfig.safeBlockHorizontal * 1.1,
+                    size: SizeConfig.safeBlockHorizontal * 1.2,
                   ),
                 ),
               ),

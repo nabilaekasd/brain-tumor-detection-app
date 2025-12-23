@@ -63,7 +63,7 @@ class LeftTextMenu extends StatelessWidget {
                 fontWeight: FontWeight.w500,
               ),
               PoppinsTextView(
-                value: '© 2024 All Rights Reserved',
+                value: '© 2025 All Rights Reserved',
                 size: SizeConfig.safeBlockHorizontal * 0.6,
                 color: AppColors.grey,
               ),

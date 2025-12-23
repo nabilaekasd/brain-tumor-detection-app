@@ -1,13 +1,11 @@
 import 'package:axon_vision/controllers/dashboard_controller.dart';
-import 'package:axon_vision/pages/dashboard/dashboard_widget/dashboard_tabel_data_pasien.dart';
 import 'package:axon_vision/pages/dashboard/dashboard_widget/hasil_analisis_pasien.dart';
 import 'package:axon_vision/pages/dashboard/dashboard_widget/home_dashboard.dart';
 import 'package:axon_vision/pages/dashboard/dashboard_widget/left_text_menu.dart';
 import 'package:axon_vision/pages/dashboard/dashboard_widget/data_pasien_menu_detail.dart';
 import 'package:axon_vision/pages/dashboard/dashboard_widget/pengaturan_profil.dart';
 import 'package:axon_vision/pages/dashboard/dashboard_widget/upload_scan_mri.dart';
-import 'package:axon_vision/pages/global_widgets/custom/custom_flat_button.dart';
-import 'package:axon_vision/pages/global_widgets/custom/custom_text_field.dart';
+import 'package:axon_vision/pages/dashboard/dashboard_widget/daftar_pasien_menu.dart';
 import 'package:axon_vision/pages/global_widgets/frame/frame_scaffold.dart';
 import 'package:axon_vision/pages/global_widgets/text_fonts/poppins_text_view.dart';
 import 'package:axon_vision/utils/app_colors.dart';
@@ -348,65 +346,5 @@ class DashboardPage extends StatelessWidget {
       default:
         return Home(dashboardController: dashboardController);
     }
-  }
-}
-
-class DaftarPasienMenu extends StatelessWidget {
-  const DaftarPasienMenu({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return GetBuilder<DashboardController>(
-      init: DashboardController(),
-      builder: (dashboardController) => Column(
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              CustomTextField(
-                controller: dashboardController.searchController,
-                width: 60,
-                title: '',
-                borderRadius: 1,
-                hintText: 'Cari berdasarkan nama atau ID...',
-              ),
-              SpaceSizer(horizontal: 2),
-              CustomFlatButton(
-                text: 'Cari',
-                onTap: () {
-                  dashboardController.searchPatients(
-                    dashboardController.searchController.text,
-                  );
-                },
-                radius: 1.4,
-                width: SizeConfig.blockSizeHorizontal * 8,
-                backgroundColor: AppColors.bgColor,
-              ),
-            ],
-          ),
-          SpaceSizer(vertical: 2),
-          Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              border: Border.all(color: AppColors.greyDisabled),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: dashboardController.pasienData.isEmpty
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20.0),
-                      child: PoppinsTextView(
-                        value: 'Data Tidak Ditemukan!',
-                        size: SizeConfig.safeBlockHorizontal * 1.6,
-                      ),
-                    ),
-                  )
-                : const DashboardTabelDataPasien(isHideID: false),
-          ),
-          SpaceSizer(vertical: 5),
-        ],
-      ),
-    );
   }
 }

@@ -9,9 +9,17 @@ import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 class PasienDataSource extends DataGridSource {
   late List<DataGridRow> dataGridRows;
   final List<DataPasienModel> dataPasien;
-  final Function(DataPasienModel) onUploadTap;
 
-  PasienDataSource({required this.dataPasien, required this.onUploadTap}) {
+  final String userRole;
+  final Function(DataPasienModel)? onUploadTap;
+  final Function(DataPasienModel)? onDetailTap;
+
+  PasienDataSource({
+    required this.dataPasien,
+    required this.userRole,
+    this.onUploadTap,
+    this.onDetailTap,
+  }) {
     dataGridRows = dataPasien
         .map<DataGridRow>(
           (pasien) => DataGridRow(
@@ -35,29 +43,52 @@ class PasienDataSource extends DataGridSource {
 
   @override
   DataGridRowAdapter? buildRow(DataGridRow row) {
+    int index = effectiveRows.indexOf(row);
+    Color rowColor = index % 2 == 0 ? Colors.white : const Color(0xFFF9FAFB);
+
     return DataGridRowAdapter(
+      color: rowColor,
       cells: row.getCells().map<Widget>((dataGridCell) {
-        return Container(
-          padding: EdgeInsets.only(
-            left: SizeConfig.horizontal(
-              dataGridCell.columnName == 'action' ? 0 : 1,
-            ),
-          ),
-          alignment: dataGridCell.columnName == 'action'
-              ? Alignment.center
-              : Alignment.centerLeft,
-          child: dataGridCell.columnName == 'action'
-              ? CustomRippleButton(
-                  onTap: () {
-                    final dataPasien = dataGridCell.value as DataPasienModel;
-                    onUploadTap(dataPasien);
-                  },
-                  child: Icon(Icons.file_upload, color: AppColors.greyDisabled),
-                )
-              : PoppinsTextView(
-                  value: dataGridCell.value.toString(),
-                  size: SizeConfig.safeBlockHorizontal * 0.8,
+        if (dataGridCell.columnName == 'action') {
+          return Container(
+            alignment: Alignment.center,
+            child: CustomRippleButton(
+              onTap: () {
+                final data = dataGridCell.value as DataPasienModel;
+
+                if (userRole == 'radiolog' && onUploadTap != null) {
+                  onUploadTap!(data);
+                } else if (userRole == 'dokter' && onDetailTap != null) {
+                  onDetailTap!(data);
+                }
+              },
+              child: Tooltip(
+                message: userRole == 'radiolog'
+                    ? 'Upload Scan MRI'
+                    : 'Lihat Detail Pasien',
+                child: Padding(
+                  padding: EdgeInsets.all(SizeConfig.horizontal(0.5)),
+                  child: Icon(
+                    userRole == 'radiolog'
+                        ? Icons.file_upload_outlined
+                        : Icons.description_outlined,
+                    color: AppColors.grey,
+                    size: SizeConfig.safeBlockHorizontal * 1.1,
+                  ),
                 ),
+              ),
+            ),
+          );
+        }
+
+        return Container(
+          padding: EdgeInsets.only(left: SizeConfig.horizontal(1)),
+          alignment: Alignment.centerLeft,
+          child: PoppinsTextView(
+            value: dataGridCell.value.toString(),
+            size: SizeConfig.safeBlockHorizontal * 0.8,
+            color: AppColors.black,
+          ),
         );
       }).toList(),
     );

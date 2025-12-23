@@ -79,10 +79,13 @@ class CustomTextPasswordField extends StatelessWidget {
         else
           InterTextView(
             value: title,
-            size: textSize ?? SizeConfig.safeBlockHorizontal * 1.5,
+            size: textSize ?? SizeConfig.safeBlockHorizontal * 0.9,
             fontWeight: titleFontWeight ?? FontWeight.w500,
             color: textColor ?? AppColors.black,
           ),
+
+        SizedBox(height: SizeConfig.vertical(1)),
+
         SizedBox(
           width: SizeConfig.horizontal(width ?? 25),
           height: height ?? SizeConfig.vertical(7),

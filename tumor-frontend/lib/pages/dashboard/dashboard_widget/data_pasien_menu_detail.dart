@@ -6,6 +6,7 @@ import 'package:axon_vision/utils/app_colors.dart';
 import 'package:axon_vision/utils/size_config.dart';
 import 'package:axon_vision/utils/space_sizer.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart'; // Tambahan Import
 
 class DataPasienMenuDetail extends StatelessWidget {
   const DataPasienMenuDetail({
@@ -165,23 +166,49 @@ class DataPasienMenuDetail extends StatelessWidget {
         ),
         SpaceSizer(vertical: 2),
 
-        Column(
-          children: [
-            _buildScanHistoryCard(
-              'MRI Brain Contrast',
-              '15 Oktober 2025 - 09:30 WIB',
-              'Selesai',
-              true,
-            ),
-            SpaceSizer(vertical: 1.5),
-            _buildScanHistoryCard(
-              'MRI Brain Plain',
-              '10 Januari 2025 - 14:00 WIB',
-              'Selesai',
-              true,
-            ),
-          ],
-        ),
+        // --- BAGIAN INI YANG KITA UBAH JADI OTOMATIS ---
+        Obx(() {
+          if (dashboardController.riwayatList.isEmpty) {
+            return Container(
+              padding: EdgeInsets.all(20),
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Center(
+                child: Column(
+                  children: [
+                    Icon(Icons.folder_open, color: Colors.grey, size: 40),
+                    SizedBox(height: 10),
+                    Text(
+                      "Belum ada riwayat scan MRI",
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          return Column(
+            children: dashboardController.riwayatList.map((riwayat) {
+              return Column(
+                children: [
+                  _buildScanHistoryCard(
+                    riwayat.jenisMri, // Ambil dari Database
+                    riwayat.tanggal, // Ambil dari Database
+                    riwayat.hasil, // Ambil dari Database
+                    true,
+                  ),
+                  SpaceSizer(vertical: 1.5),
+                ],
+              );
+            }).toList(),
+          );
+        }),
+
+        // -----------------------------------------------
         SpaceSizer(vertical: 5),
       ],
     );
@@ -243,15 +270,16 @@ class DataPasienMenuDetail extends StatelessWidget {
     Color statusBgColor;
 
     String statusLower = status.toLowerCase();
-    if (statusLower.contains('selesai')) {
+
+    // Logika warna status berdasarkan hasil AI
+    if (statusLower.contains('normal') || statusLower.contains('aman')) {
       statusColor = Colors.green;
       statusBgColor = Colors.green.withValues(alpha: 0.1);
-    } else if (statusLower.contains('analisis') ||
-        statusLower.contains('proses')) {
-      statusColor = AppColors.blueDark;
-      statusBgColor = AppColors.blueDark.withValues(alpha: 0.1);
+    } else if (statusLower.contains('tumor')) {
+      statusColor = Colors.red; // Tumor = Merah
+      statusBgColor = Colors.red.withValues(alpha: 0.1);
     } else {
-      statusColor = Colors.orange;
+      statusColor = Colors.orange; // Lainnya = Oranye
       statusBgColor = Colors.orange.withValues(alpha: 0.1);
     }
 

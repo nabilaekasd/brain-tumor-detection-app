@@ -1,4 +1,6 @@
 import 'dart:developer';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 import 'package:axon_vision/models/data_analisis_model.dart';
 import 'package:axon_vision/models/data_pasien_model.dart';
@@ -7,10 +9,41 @@ import 'package:axon_vision/table_source/pasien_data_source.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+// --- MODEL KHUSUS RIWAYAT ---
+class RiwayatModel {
+  final String jenisMri;
+  final String tanggal;
+  final String hasil;
+
+  RiwayatModel({
+    required this.jenisMri,
+    required this.tanggal,
+    required this.hasil,
+  });
+
+  factory RiwayatModel.fromJson(Map<String, dynamic> json) {
+    return RiwayatModel(
+      jenisMri: json['jenis_mri'] ?? 'MRI Scan',
+      tanggal: json['tanggal_periksa'] ?? '-',
+      hasil: json['hasil_prediksi'] ?? 'Belum Dianalisis',
+    );
+  }
+}
+
 class DashboardController extends GetxController {
-  List<DataPasienModel> pasienData = <DataPasienModel>[];
+  // --- PERBAIKAN DI SINI: UBAH JADI .OBS ---
+  var pasienData = <DataPasienModel>[].obs; // Sekarang jadi Reactive
+
   List<DataAnalisisModel> analisisData = <DataAnalisisModel>[];
   List<DataPasienModel> originalPasienData = <DataPasienModel>[];
+
+  // --- VARIABLE DATA DARI BACKEND ---
+  var riwayatList = <RiwayatModel>[].obs;
+
+  // --- VARIABLE STATISTIK (DASHBOARD SUMMARY) ---
+  var totalPasien = 0.obs;
+  var totalMenunggu = 0.obs;
+  var totalSelesai = 0.obs;
 
   TextEditingController searchController = TextEditingController();
   late PasienDataSource pasienDataSource;
@@ -33,7 +66,9 @@ class DashboardController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    pasienData = getPasienData();
+    // PERBAIKAN: Gunakan assignAll karena sekarang dia .obs
+    pasienData.assignAll(getPasienData());
+
     analisisData = getAnalisisData();
     analisisDataSource = AnalisisDataSource(analisisData);
     originalPasienData = List.from(pasienData);
@@ -46,6 +81,54 @@ class DashboardController extends GetxController {
         log("Dokter melihat home: ${pasien.namePatient}");
       },
     );
+
+    // --- PANGGIL DATA DARI BACKEND ---
+    fetchRiwayat();
+    fetchSummary();
+  }
+
+  // --- FUNGSI 1: AMBIL RIWAYAT (LIST) ---
+  void fetchRiwayat() async {
+    try {
+      var url = Uri.parse('http://127.0.0.1:8000/riwayat-semua/');
+      var response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        List jsonResponse = json.decode(response.body);
+        var data = jsonResponse
+            .map((job) => RiwayatModel.fromJson(job))
+            .toList();
+
+        riwayatList.assignAll(data.reversed.toList());
+        log("BERHASIL AMBIL ${data.length} DATA RIWAYAT!", name: 'API RIWAYAT');
+      } else {
+        log('Gagal ambil riwayat: ${response.statusCode}');
+      }
+    } catch (e) {
+      log('Error koneksi backend (Riwayat): $e');
+    }
+  }
+
+  // --- FUNGSI 2: AMBIL STATISTIK (ANGKA X, Y, Z) ---
+  void fetchSummary() async {
+    try {
+      var url = Uri.parse('http://127.0.0.1:8000/dashboard-summary/');
+      var response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        var data = json.decode(response.body);
+
+        totalPasien.value = data['total_pasien'] ?? 0;
+        totalMenunggu.value = data['total_menunggu'] ?? 0;
+        totalSelesai.value = data['total_selesai'] ?? 0;
+
+        log("BERHASIL UPDATE SUMMARY: $data", name: 'API SUMMARY');
+      } else {
+        log('Gagal ambil summary: ${response.statusCode}');
+      }
+    } catch (e) {
+      log('Error koneksi backend (Summary): $e');
+    }
   }
 
   void toggleSidebar() {
@@ -63,6 +146,13 @@ class DashboardController extends GetxController {
     _activeMenuIndex.value = index;
     log("Menu changed to: $index");
     update();
+
+    if (index == 0) {
+      fetchSummary();
+    }
+    if (index == 2 || index == 4) {
+      fetchRiwayat();
+    }
   }
 
   void backToPasienList() {
@@ -134,7 +224,9 @@ class DashboardController extends GetxController {
         return name.contains(searchLower) || id.contains(searchLower);
       }).toList();
     }
-    pasienData = filtered;
+
+    // PERBAIKAN: Gunakan assignAll
+    pasienData.assignAll(filtered);
     refreshPasienDataSource();
   }
 
@@ -147,7 +239,6 @@ class DashboardController extends GetxController {
     return (analisisData.length / pageSize).ceilToDouble();
   }
 
-  //Dummy Data
   List<DataPasienModel> getPasienData() {
     return List.generate(25, (index) {
       int id = index + 1;
@@ -161,7 +252,6 @@ class DashboardController extends GetxController {
     });
   }
 
-  //Dummy Data
   List<DataAnalisisModel> getAnalisisData() {
     return [
       DataAnalisisModel(

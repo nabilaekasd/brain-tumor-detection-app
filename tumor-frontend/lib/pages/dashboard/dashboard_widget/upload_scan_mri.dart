@@ -11,7 +11,6 @@ import 'package:get/get.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:google_fonts/google_fonts.dart';
-import 'dart:typed_data';
 
 class UploadScanMri extends StatefulWidget {
   const UploadScanMri({

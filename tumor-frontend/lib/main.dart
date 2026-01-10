@@ -2,8 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart'; // Pastikan import ini ada
 import 'package:axon_vision/pages/login/login_page.dart'; // Sesuaikan path login
+import 'package:get_storage/get_storage.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await GetStorage.init();
+  await initializeDateFormatting('id_ID', null);
+
   runApp(const MyApp());
 }
 
@@ -15,7 +21,6 @@ class MyApp extends StatelessWidget {
     return GetMaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Axon Vision',
-
       theme: ThemeData(
         useMaterial3: true,
 
@@ -49,7 +54,6 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
-
       home: const LoginPage(),
     );
   }

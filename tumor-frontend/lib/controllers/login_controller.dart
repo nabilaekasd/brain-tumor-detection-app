@@ -1,19 +1,27 @@
+import 'dart:convert';
+import 'package:axon_vision/utils/api_config.dart'; // [1] IMPORT CONFIG API
+import 'package:axon_vision/pages/admin/admin_dashboard_page.dart';
 import 'package:axon_vision/pages/dashboard/dashboard_page.dart';
 import 'package:axon_vision/pages/global_widgets/text_fonts/poppins_text_view.dart';
+import 'package:axon_vision/pages/login/login_page.dart';
 import 'package:axon_vision/utils/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
+import 'package:http/http.dart' as http;
 
 class LoginController extends GetxController {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
-  void login() {
-    String email = emailController.text.trim();
+  final box = GetStorage();
+
+  // --- FUNGSI LOGIN ---
+  Future<void> login() async {
+    String username = emailController.text.trim();
     String password = passwordController.text.trim();
 
-    // 1. Cek Kosong
-    if (email.isEmpty || password.isEmpty) {
+    if (username.isEmpty || password.isEmpty) {
       _showDialog(
         title: 'Gagal Masuk',
         message: 'Mohon isi Username dan Password terlebih dahulu.',
@@ -22,26 +30,92 @@ class LoginController extends GetxController {
       return;
     }
 
-    // 2. Cek Credential (Simulasi)
-    if ((email == 'radiolog' || email == 'dokter') && password == '123456') {
-      // SUKSES
-      _showDialog(
-        title: 'Login Berhasil',
-        message: 'Mengalihkan ke Dashboard...',
-        isSuccess: true,
+    Get.dialog(
+      const Center(child: CircularProgressIndicator()),
+      barrierDismissible: false,
+    );
+
+    try {
+      // [2] GUNAKAN BASE URL DARI CONFIG
+      var url = Uri.parse('${ApiConfig.baseUrl}/token/');
+
+      var response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: {'username': username, 'password': password},
       );
 
-      // Pindah Halaman
-      Future.delayed(const Duration(milliseconds: 1500), () {
-        Get.offAll(() => const DashboardPage());
-      });
-    } else {
-      // GAGAL
+      if (Get.isDialogOpen ?? false) Get.back();
+
+      if (response.statusCode == 200) {
+        var data = json.decode(response.body);
+        String token = data['access_token'];
+
+        await box.write('token', token);
+        await box.write('username', username);
+
+        String role = data['role'] ?? 'dokter';
+        await box.write('role', data['role']);
+
+        debugPrint("Login Berhasil! Role: $role");
+
+        _showDialog(
+          title: 'Login Berhasil',
+          message: 'Selamat datang kembali, $role!',
+          isSuccess: true,
+        );
+
+        Future.delayed(const Duration(milliseconds: 1500), () {
+          if (role == 'admin') {
+            Get.offAll(() => const AdminDashboardPage());
+          } else {
+            Get.offAll(() => const DashboardPage());
+          }
+        });
+      } else {
+        debugPrint("Login Failed: ${response.statusCode}");
+        _showDialog(
+          title: 'Akses Ditolak',
+          message: 'Username atau Password salah. Silakan coba lagi.',
+          isSuccess: false,
+        );
+      }
+    } catch (e) {
+      if (Get.isDialogOpen ?? false) Get.back();
       _showDialog(
-        title: 'Akses Ditolak',
-        message: 'Username atau Password yang Anda masukkan salah.',
+        title: 'Kesalahan Koneksi',
+        message: 'Gagal terhubung ke server.\nPastikan backend sudah menyala.',
         isSuccess: false,
       );
+      debugPrint("Error Login: $e");
+    }
+  }
+
+  // --- FUNGSI LOGOUT ---
+  Future<void> logout() async {
+    try {
+      String? token = box.read('token');
+
+      if (token != null) {
+        // [3] GUNAKAN BASE URL JUGA DI SINI
+        var url = Uri.parse('${ApiConfig.baseUrl}/logout/');
+
+        await http.post(
+          url,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        );
+      }
+    } catch (e) {
+      debugPrint("Gagal lapor logout ke server: $e");
+    } finally {
+      box.remove('token');
+      box.remove('role');
+      box.remove('username');
+
+      Get.offAll(() => const LoginPage());
     }
   }
 
@@ -82,7 +156,6 @@ class LoginController extends GetxController {
                 ),
               ),
               const SizedBox(height: 20),
-
               PoppinsTextView(
                 value: title,
                 fontWeight: FontWeight.bold,
@@ -90,7 +163,6 @@ class LoginController extends GetxController {
                 color: AppColors.blueDark,
               ),
               const SizedBox(height: 10),
-
               PoppinsTextView(
                 value: message,
                 textAlign: TextAlign.center,
@@ -99,7 +171,6 @@ class LoginController extends GetxController {
                 height: 1.5,
               ),
               const SizedBox(height: 30),
-
               if (!isSuccess)
                 SizedBox(
                   width: double.infinity,
@@ -114,7 +185,7 @@ class LoginController extends GetxController {
                       ),
                       padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
-                    child: PoppinsTextView(
+                    child: const PoppinsTextView(
                       value: "Coba Lagi",
                       fontWeight: FontWeight.w600,
                       color: Colors.white,

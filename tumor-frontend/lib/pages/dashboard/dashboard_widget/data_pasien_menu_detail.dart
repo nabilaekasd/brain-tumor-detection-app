@@ -208,7 +208,6 @@ class DataPasienMenuDetail extends StatelessWidget {
           );
         }),
 
-        // -----------------------------------------------
         SpaceSizer(vertical: 5),
       ],
     );

@@ -9,7 +9,8 @@ class PoppinsTextView extends StatelessWidget {
     super.key,
     required this.value,
     this.color,
-    this.size,
+    this.size, // Ini parameter lama (biar kodingan lain aman)
+    this.fontSize, // Ini parameter baru (biar tombol Apply/Cancel bisa set ukuran)
     this.fontStyle,
     this.fontWeight,
     this.alignText,
@@ -19,11 +20,13 @@ class PoppinsTextView extends StatelessWidget {
     this.decorationColor,
     this.maxLines,
     this.height,
+    // HAPUS bagian 'required int fontSize' yang bikin error itu
   });
 
   final String value;
   final Color? color;
-  final double? size;
+  final double? size; // Variable lama
+  final double? fontSize; // Variable baru (Tipe double, bukan int)
   final FontStyle? fontStyle;
   final FontWeight? fontWeight;
   final AlignTextType? alignText;
@@ -36,15 +39,14 @@ class PoppinsTextView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    TextAlign finalAlign =
-        textAlign ??
+    TextAlign finalAlign = textAlign ??
         (alignText == AlignTextType.center
             ? TextAlign.center
             : alignText == AlignTextType.right
-            ? TextAlign.right
-            : alignText == AlignTextType.justify
-            ? TextAlign.justify
-            : TextAlign.left);
+                ? TextAlign.right
+                : alignText == AlignTextType.justify
+                    ? TextAlign.justify
+                    : TextAlign.left);
 
     return Text(
       value,
@@ -55,7 +57,13 @@ class PoppinsTextView extends StatelessWidget {
         decoration: textDecoration,
         decorationColor: decorationColor,
         color: color ?? AppColors.black,
-        fontSize: size ?? SizeConfig.safeBlockHorizontal * 4,
+
+        // --- LOGIKA CERDAS ---
+        // 1. Cek apakah 'fontSize' diisi? (oleh tombol Cancel/Apply)
+        // 2. Jika tidak, cek apakah 'size' diisi? (oleh halaman lain)
+        // 3. Jika tidak ada juga, pakai ukuran default (SizeConfig)
+        fontSize: fontSize ?? size ?? SizeConfig.safeBlockHorizontal * 4,
+
         fontStyle: fontStyle ?? FontStyle.normal,
         fontWeight: fontWeight ?? FontWeight.normal,
         height: height,
@@ -64,6 +72,7 @@ class PoppinsTextView extends StatelessWidget {
   }
 }
 
+// --- BAGIAN INI BIARKAN SAJA (TIDAK PERLU DIUBAH) ---
 class PoppinsStyle {
   TextStyle labelStyle() {
     return GoogleFonts.poppins(

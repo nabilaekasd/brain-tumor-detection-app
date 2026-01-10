@@ -1,12 +1,14 @@
 import 'dart:developer';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-
+import 'package:axon_vision/utils/api_config.dart';
+import 'package:axon_vision/pages/login/login_page.dart';
 import 'package:axon_vision/models/data_analisis_model.dart';
 import 'package:axon_vision/models/data_pasien_model.dart';
 import 'package:axon_vision/table_source/analisis_data_source.dart';
 import 'package:axon_vision/table_source/pasien_data_source.dart';
 import 'package:flutter/material.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:get/get.dart';
 
 // --- MODEL KHUSUS RIWAYAT ---
@@ -31,7 +33,6 @@ class RiwayatModel {
 }
 
 class DashboardController extends GetxController {
-  // --- PERBAIKAN DI SINI: UBAH JADI .OBS ---
   var pasienData = <DataPasienModel>[].obs; // Sekarang jadi Reactive
 
   List<DataAnalisisModel> analisisData = <DataAnalisisModel>[];
@@ -90,14 +91,13 @@ class DashboardController extends GetxController {
   // --- FUNGSI 1: AMBIL RIWAYAT (LIST) ---
   void fetchRiwayat() async {
     try {
-      var url = Uri.parse('http://127.0.0.1:8000/riwayat-semua/');
+      var url = Uri.parse('${ApiConfig.baseUrl}/riwayat-semua/');
       var response = await http.get(url);
 
       if (response.statusCode == 200) {
         List jsonResponse = json.decode(response.body);
-        var data = jsonResponse
-            .map((job) => RiwayatModel.fromJson(job))
-            .toList();
+        var data =
+            jsonResponse.map((job) => RiwayatModel.fromJson(job)).toList();
 
         riwayatList.assignAll(data.reversed.toList());
         log("BERHASIL AMBIL ${data.length} DATA RIWAYAT!", name: 'API RIWAYAT');
@@ -112,7 +112,7 @@ class DashboardController extends GetxController {
   // --- FUNGSI 2: AMBIL STATISTIK (ANGKA X, Y, Z) ---
   void fetchSummary() async {
     try {
-      var url = Uri.parse('http://127.0.0.1:8000/dashboard-summary/');
+      var url = Uri.parse('${ApiConfig.baseUrl}/dashboard-summary/');
       var response = await http.get(url);
 
       if (response.statusCode == 200) {
@@ -139,6 +139,7 @@ class DashboardController extends GetxController {
   void handledChangeScreenDynamic(DataPasienModel pasien) {
     _selectedPasien.value = pasien;
     _activeMenuIndex.value = 2;
+    fetchRiwayat();
     update();
   }
 

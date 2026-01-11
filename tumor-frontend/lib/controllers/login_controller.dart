@@ -5,6 +5,7 @@ import 'package:axon_vision/pages/dashboard/dashboard_page.dart';
 import 'package:axon_vision/pages/global_widgets/text_fonts/poppins_text_view.dart';
 import 'package:axon_vision/pages/login/login_page.dart';
 import 'package:axon_vision/utils/app_colors.dart';
+import 'package:axon_vision/routes/app_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
@@ -66,8 +67,12 @@ class LoginController extends GetxController {
         );
 
         Future.delayed(const Duration(milliseconds: 1500), () {
+          if (Get.isDialogOpen ?? false) Get.back();
+
           if (role == 'admin') {
             Get.offAll(() => const AdminDashboardPage());
+          } else if (role == 'radiolog') {
+            Get.offAllNamed(AppRoute.radiologDashboard);
           } else {
             Get.offAll(() => const DashboardPage());
           }

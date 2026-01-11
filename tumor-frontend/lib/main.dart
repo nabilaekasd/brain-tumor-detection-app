@@ -1,7 +1,7 @@
+import 'package:axon_vision/routes/app_route.dart'; // [1] WAJIB IMPORT INI
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:google_fonts/google_fonts.dart'; // Pastikan import ini ada
-import 'package:axon_vision/pages/login/login_page.dart'; // Sesuaikan path login
+import 'package:google_fonts/google_fonts.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
@@ -21,19 +21,19 @@ class MyApp extends StatelessWidget {
     return GetMaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Axon Vision',
+
+      // [2] SISTEM ROUTING (JANGAN LUPA BAGIAN INI)
+      initialRoute: AppRoute.login, // Halaman pertama yang dibuka
+      getPages: AppRoute.pages, // Daftar semua halaman yang ada
+
+      // Catatan: Properti 'home' dihapus karena sudah diganti 'initialRoute'
+
       theme: ThemeData(
         useMaterial3: true,
-
-        // 1. SETTING FONT GLOBAL
         textTheme: GoogleFonts.poppinsTextTheme(Theme.of(context).textTheme),
-
-        // 2. PAKSA BACKGROUND PUTIH BERSIH
         scaffoldBackgroundColor: Colors.white,
-        canvasColor: Colors.white, // Untuk Dropdown lama
+        canvasColor: Colors.white,
         cardColor: Colors.white,
-
-        // 3. HILANGKAN EFEK TINT (BAYANGAN WARNA) PADA POPUP & DIALOG
-        // Ini kuncinya agar tidak ada warna ungu/biru tipis
         dialogTheme: const DialogThemeData(
           backgroundColor: Colors.white,
           surfaceTintColor: Colors.transparent,
@@ -46,7 +46,6 @@ class MyApp extends StatelessWidget {
           color: Colors.white,
           surfaceTintColor: Colors.transparent,
         ),
-        // Untuk Dropdown Menu
         dropdownMenuTheme: const DropdownMenuThemeData(
           menuStyle: MenuStyle(
             backgroundColor: WidgetStatePropertyAll(Colors.white),
@@ -54,7 +53,6 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const LoginPage(),
     );
   }
 }

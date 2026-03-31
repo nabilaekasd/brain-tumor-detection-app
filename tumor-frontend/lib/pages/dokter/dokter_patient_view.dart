@@ -1,12 +1,12 @@
-import 'package:axon_vision/controllers/radiolog_controller.dart';
+import 'package:axon_vision/controllers/dokter_controller.dart';
 import 'package:axon_vision/pages/detail_analisis_page.dart';
 import 'package:axon_vision/pages/global_widgets/text_fonts/poppins_text_view.dart';
 import 'package:axon_vision/utils/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-class RadiologPatientView extends GetView<RadiologController> {
-  const RadiologPatientView({super.key});
+class DokterPatientView extends GetView<DokterController> {
+  const DokterPatientView({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -23,11 +23,10 @@ class RadiologPatientView extends GetView<RadiologController> {
         case 1:
           return _buildPatientDetailView();
         case 2:
-          return _buildUploadFormView();
-        case 3:
+          // Karena form upload dihapus, indeks ke-2 langsung ke Hasil Analisis
           return DetailAnalisisPage(
             analysisId: controller.selectedAnalysisId.value,
-            role: "RADIOLOG",
+            role: "DOKTER", // 🔥 Mengirimkan identitas DOKTER
           );
         default:
           return _buildPatientListView(context);
@@ -48,8 +47,7 @@ class RadiologPatientView extends GetView<RadiologController> {
         ),
         const SizedBox(height: 8),
         const PoppinsTextView(
-          value:
-              "Pilih pasien untuk melihat detail atau upload hasil pemeriksaan.",
+          value: "Pilih pasien untuk melihat detail dan riwayat MRI.",
           size: 14,
           color: Colors.grey,
         ),
@@ -251,7 +249,7 @@ class RadiologPatientView extends GetView<RadiologController> {
                                     padding: EdgeInsets.zero,
                                     icon: const Icon(Icons.description_outlined,
                                         color: Colors.blue, size: 18),
-                                    tooltip: "Lihat Detail & Upload",
+                                    tooltip: "Lihat Detail",
                                     onPressed: () =>
                                         controller.openPatientDetail(p),
                                   ),
@@ -319,7 +317,7 @@ class RadiologPatientView extends GetView<RadiologController> {
     );
   }
 
-  // --- 2. HALAMAN DETAIL PASIEN (DIPERBAIKI) ---
+  // --- 2. HALAMAN DETAIL PASIEN (TANPA TOMBOL UPLOAD) ---
   Widget _buildPatientDetailView() {
     final p = controller.selectedPatient.value!;
     return SingleChildScrollView(
@@ -405,29 +403,7 @@ class RadiologPatientView extends GetView<RadiologController> {
             ),
           ),
 
-          const SizedBox(height: 24),
-
-          // TOMBOL UPLOAD
-          SizedBox(
-            width: double.infinity,
-            height: 55,
-            child: ElevatedButton.icon(
-              onPressed: () => controller.openUploadPage(),
-              icon: const Icon(Icons.cloud_upload_rounded, color: Colors.white),
-              label: const PoppinsTextView(
-                  value: "Upload MRI Baru",
-                  color: Colors.white,
-                  size: 16,
-                  fontWeight: FontWeight.w600),
-              style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    const Color(0xFF384674), // Warna khusus tombol upload
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-          ),
-
+          // 🔥 TOMBOL UPLOAD DIHAPUS DI SINI 🔥
           const SizedBox(height: 32),
 
           // BAGIAN RIWAYAT SCAN MRI
@@ -548,15 +524,13 @@ class RadiologPatientView extends GetView<RadiologController> {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: iconBgColor, // Merah sangat muda
+                            color: iconBgColor,
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Icon(Icons.document_scanner_outlined,
                               color: iconColor),
                         ),
                         const SizedBox(width: 16),
-
-                        // Info Tengah
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -576,8 +550,6 @@ class RadiologPatientView extends GetView<RadiologController> {
                             ],
                           ),
                         ),
-
-                        // Badge Prediksi Kanan
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
@@ -615,200 +587,11 @@ class RadiologPatientView extends GetView<RadiologController> {
     );
   }
 
-  // --- 3. HALAMAN UPLOAD FORM ---
-  Widget _buildUploadFormView() {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          TextButton.icon(
-            onPressed: () => controller.backToPreviousStep(),
-            icon: const Icon(Icons.arrow_back, color: Colors.grey),
-            label: const PoppinsTextView(
-                value: "Kembali ke Detail Pasien",
-                color: Colors.grey,
-                size: 14),
-          ),
-          const SizedBox(height: 10),
-          Center(
-            child: Container(
-              width: 600,
-              padding: const EdgeInsets.all(30),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 20)
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  PoppinsTextView(
-                      value: "Formulir Upload MRI",
-                      size: 20,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.blueDark),
-                  const SizedBox(height: 8),
-                  PoppinsTextView(
-                      value:
-                          "Pastikan file MRI dalam format file yang didukung.",
-                      size: 13,
-                      color: Colors.grey),
-                  const Divider(height: 40),
-                  _readOnlyField("Nama Pasien", controller.namaPasienC),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                          child: _readOnlyField(
-                              "ID Rekam Medis", controller.idRmC)),
-                      const SizedBox(width: 16),
-                      Expanded(
-                          child: _readOnlyField(
-                              "Tanggal Lahir", controller.tglLahirC)),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  PoppinsTextView(
-                      value: "Jenis MRI",
-                      size: 12,
-                      color: AppColors.blueDark,
-                      fontWeight: FontWeight.bold),
-                  const SizedBox(height: 8),
-                  Obx(() => Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(8)),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: controller.selectedJenisMRI.value,
-                            isExpanded: true,
-                            items: [
-                              "T1 Weighted",
-                              "T2 Weighted",
-                              "FLAIR",
-                              "Diffusion Weighted"
-                            ]
-                                .map((e) => DropdownMenuItem(
-                                    value: e,
-                                    child: PoppinsTextView(
-                                        value: e,
-                                        size: 13,
-                                        color: Colors.black87)))
-                                .toList(),
-                            onChanged: (val) =>
-                                controller.selectedJenisMRI.value = val!,
-                          ),
-                        ),
-                      )),
-                  const SizedBox(height: 16),
-                  PoppinsTextView(
-                      value: "Catatan Klinis (Opsional)",
-                      size: 12,
-                      color: AppColors.blueDark,
-                      fontWeight: FontWeight.bold),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: controller.catatanC,
-                    maxLines: 3,
-                    decoration: InputDecoration(
-                      hintText: "Contoh: Keluhan nyeri kepala...",
-                      hintStyle: const TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 13,
-                          color: Colors.grey),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: Colors.grey.shade300)),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  PoppinsTextView(
-                      value: "File Scan MRI",
-                      size: 12,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.blueDark),
-                  const SizedBox(height: 8),
-                  InkWell(
-                    onTap: () => controller.pickMRIFile(),
-                    child: Container(
-                      height: 150,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                            color: Colors.blue.shade200,
-                            style: BorderStyle.solid),
-                      ),
-                      child: Obx(() => Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                controller.selectedFile.value == null
-                                    ? Icons.cloud_upload_rounded
-                                    : Icons.check_circle,
-                                size: 40,
-                                color: controller.selectedFile.value == null
-                                    ? Colors.blue
-                                    : Colors.green,
-                              ),
-                              const SizedBox(height: 10),
-                              PoppinsTextView(
-                                value: controller.selectedFile.value == null
-                                    ? "Klik untuk Pilih File"
-                                    : controller.selectedFileName.value,
-                                fontWeight: FontWeight.bold,
-                                size: 13,
-                                color: controller.selectedFile.value == null
-                                    ? Colors.blue
-                                    : Colors.green,
-                              ),
-                            ],
-                          )),
-                    ),
-                  ),
-                  const SizedBox(height: 30),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: Obx(() => ElevatedButton(
-                          onPressed: controller.isLoading.value
-                              ? null
-                              : () => controller.uploadAndAnalyze(),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.blueDark,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                          ),
-                          child: controller.isLoading.value
-                              ? const CircularProgressIndicator(
-                                  color: Colors.white)
-                              : const PoppinsTextView(
-                                  value: "Analisa & Simpan",
-                                  size: 16,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold),
-                        )),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   // --- WIDGET HELPER ---
   Widget _buildStatusBadge(String status) {
     bool isActive = status == "Aktif";
     return Align(
-      alignment: Alignment.centerRight, // Dipindah ke kanan agar rapi
+      alignment: Alignment.centerRight,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
@@ -841,34 +624,6 @@ class RadiologPatientView extends GetView<RadiologController> {
                 size: 13,
                 fontWeight: FontWeight.w600,
                 color: Colors.black87)),
-      ],
-    );
-  }
-
-  Widget _readOnlyField(String label, TextEditingController controller) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        PoppinsTextView(
-            value: label,
-            size: 12,
-            fontWeight: FontWeight.bold,
-            color: Colors.grey),
-        const SizedBox(height: 6),
-        TextField(
-          controller: controller,
-          readOnly: true,
-          style: const TextStyle(fontFamily: 'Poppins', fontSize: 14),
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: Colors.grey.shade100,
-            border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide.none),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-          ),
-        ),
       ],
     );
   }

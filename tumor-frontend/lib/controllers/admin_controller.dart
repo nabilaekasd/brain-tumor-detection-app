@@ -445,6 +445,7 @@ class AdminController extends GetxController {
       Get.snackbar("Error", "Nama dan ID RM wajib diisi");
       return;
     }
+
     try {
       String? token = getToken();
       var body = json.encode({
@@ -464,7 +465,7 @@ class AdminController extends GetxController {
         body: body,
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         Get.back();
         Get.snackbar(
           "Sukses",
@@ -475,7 +476,8 @@ class AdminController extends GetxController {
         clearPatientForm();
         fetchPatients();
       } else {
-        Get.snackbar("Gagal", "ID RM mungkin sudah ada");
+        debugPrint("Gagal: ${response.body}");
+        Get.snackbar("Gagal", "Error: ${response.statusCode}");
       }
     } catch (e) {
       debugPrint("Error tambah pasien: $e");

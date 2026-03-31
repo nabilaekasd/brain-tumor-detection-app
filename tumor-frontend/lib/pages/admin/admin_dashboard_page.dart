@@ -32,7 +32,6 @@ class AdminDashboardPage extends StatelessWidget {
       view: Obx(
         () => Center(
           child: Container(
-            // Frame Utama
             width: SizeConfig.safeBlockHorizontal * 90,
             height: SizeConfig.safeBlockVertical * 96,
             decoration: BoxDecoration(
@@ -246,9 +245,10 @@ class AdminDashboardPage extends StatelessWidget {
                                         size: 20,
                                       ),
                                       SizedBox(width: 12),
-                                      Text(
-                                        "Profil Saya",
-                                        style: TextStyle(fontSize: 14),
+                                      PoppinsTextView(
+                                        value: "Profil Saya",
+                                        size: 14,
+                                        color: Colors.black87,
                                       ),
                                     ],
                                   ),
@@ -264,12 +264,10 @@ class AdminDashboardPage extends StatelessWidget {
                                         size: 20,
                                       ),
                                       SizedBox(width: 12),
-                                      Text(
-                                        "Keluar",
-                                        style: TextStyle(
-                                          color: Colors.red,
-                                          fontSize: 14,
-                                        ),
+                                      PoppinsTextView(
+                                        value: "Keluar",
+                                        color: Colors.red,
+                                        size: 14,
                                       ),
                                     ],
                                   ),

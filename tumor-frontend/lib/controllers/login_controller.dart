@@ -69,12 +69,14 @@ class LoginController extends GetxController {
         Future.delayed(const Duration(milliseconds: 1500), () {
           if (Get.isDialogOpen ?? false) Get.back();
 
-          if (role == 'admin') {
+          String safeRole = role.toLowerCase().trim();
+
+          if (safeRole == 'admin') {
             Get.offAll(() => const AdminDashboardPage());
-          } else if (role == 'radiolog') {
+          } else if (safeRole == 'radiolog') {
             Get.offAllNamed(AppRoute.radiologDashboard);
-          } else {
-            Get.offAll(() => const DashboardPage());
+          } else if (safeRole == 'dokter') {
+            Get.offAllNamed(AppRoute.dokterDashboard);
           }
         });
       } else {

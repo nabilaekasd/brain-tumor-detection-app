@@ -7,25 +7,24 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:http/http.dart' as http;
-import 'package:file_picker/file_picker.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:image_picker/image_picker.dart'; // File_picker dihapus karena tidak upload MRI
 
-class RadiologController extends GetxController {
+class DokterController extends GetxController {
   final box = GetStorage();
 
   // Variabel Data
   var activeIndex = 0.obs;
   var isSidebarExpanded = true.obs;
-  var patientViewStep = 0.obs;
+  var patientViewStep = 0.obs; // 0: List, 1: Detail, 2: Analisis
   var detailAnalysisData = {}.obs;
   var isLoadingDetail = false.obs;
   var isLoading = false.obs;
   var selectedAnalysisId = "".obs;
   var isSortNewest = true.obs;
 
-  // Data Profil
-  var displayName = 'Radiolog'.obs;
-  var displayRole = 'Radiologist'.obs;
+  // Data Profil (Default disesuaikan untuk Dokter)
+  var displayName = 'Dokter'.obs;
+  var displayRole = 'Doctor'.obs;
   var profileImageUrl = "".obs;
   var currentUserId = 0.obs;
 
@@ -61,18 +60,7 @@ class RadiologController extends GetxController {
     }).toList();
   }
 
-  // FORM VARIABLES
-  TextEditingController namaPasienC = TextEditingController();
-  TextEditingController idRmC = TextEditingController();
-  TextEditingController tglLahirC = TextEditingController();
-  TextEditingController catatanC = TextEditingController();
-
-  var selectedGender = "Laki-laki".obs;
-  var selectedStatus = "Aktif".obs;
-  var selectedJenisMRI = "T1 Weighted".obs;
-  var selectedFile = Rxn<PlatformFile>();
-  var selectedFileName = "".obs;
-
+  // FORM VARIABLES (Variabel Upload MRI sudah dihapus)
   TextEditingController myUsernameC = TextEditingController();
   TextEditingController myFullNameC = TextEditingController();
   TextEditingController oldPasswordC = TextEditingController();
@@ -130,7 +118,6 @@ class RadiologController extends GetxController {
     patientCurrentPage.value = 1;
   }
 
-  // Helper Reset Form Profil
   void clearProfileForm() {
     oldPasswordC.clear();
     newPasswordC.clear();
@@ -140,12 +127,6 @@ class RadiologController extends GetxController {
     myUsernameC.text = box.read('username') ?? "";
   }
 
-  void clearUploadForm() {
-    selectedFile.value = null;
-    selectedFileName.value = "";
-    catatanC.clear();
-  }
-
   // NAVIGASI
   void toggleSidebar() => isSidebarExpanded.toggle();
 
@@ -153,13 +134,13 @@ class RadiologController extends GetxController {
     if (activeIndex.value == 0) {
       return "Dashboard Overview";
     } else if (activeIndex.value == 1) {
+      // Step disesuaikan karena tidak ada form upload
       switch (patientViewStep.value) {
         case 0:
           return "Data Pasien";
         case 1:
+          return "Detail Pasien";
         case 2:
-          return "Detail & Upload MRI";
-        case 3:
           return "Hasil Analisis AI";
         default:
           return "Data Pasien";
@@ -184,28 +165,17 @@ class RadiologController extends GetxController {
     patientViewStep.value = 1;
   }
 
-  void openUploadPage() {
-    if (selectedPatient.value == null) return;
-    var p = selectedPatient.value!;
-    namaPasienC.text = p.nama;
-    idRmC.text = p.idPasienRs;
-    tglLahirC.text = p.tanggalLahir;
-    selectedGender.value = p.jenisKelamin;
-    selectedStatus.value = p.statusPasien;
-    clearUploadForm();
-    patientViewStep.value = 2;
-  }
-
   void openAnalysisResult(String analysisId) {
     selectedAnalysisId.value = analysisId;
     detailAnalysisData.value = {};
     isLoadingDetail.value = true;
-    patientViewStep.value = 3;
+    patientViewStep.value = 2; // Ubah jadi 2 karena form upload hilang
     fetchAnalysisDetail(analysisId);
   }
 
   void backToPreviousStep() {
-    if (patientViewStep.value == 3) {
+    if (patientViewStep.value == 2) {
+      // Dari Analisis kembali ke Detail / Dashboard
       if (selectedPatient.value == null) {
         activeIndex.value = 0;
         patientViewStep.value = 0;
@@ -213,9 +183,8 @@ class RadiologController extends GetxController {
         patientViewStep.value = 1;
       }
       selectedAnalysisId.value = "";
-    } else if (patientViewStep.value == 2) {
-      patientViewStep.value = 1;
     } else if (patientViewStep.value == 1) {
+      // Dari Detail kembali ke List Pasien
       patientViewStep.value = 0;
       selectedPatient.value = null;
     }
@@ -265,8 +234,8 @@ class RadiologController extends GetxController {
       if (response.statusCode == 200) {
         var data = jsonDecode(response.body);
         currentUserId.value = data['id'];
-        displayName.value = data['full_name'] ?? 'Radiolog';
-        displayRole.value = data['role'] ?? 'Radiologist';
+        displayName.value = data['full_name'] ?? 'Dokter';
+        displayRole.value = data['role'] ?? 'Doctor';
         myUsernameC.text = data['username'];
         myFullNameC.text = data['full_name'];
         if (data['avatar'] != null) profileImageUrl.value = data['avatar'];
@@ -416,100 +385,28 @@ class RadiologController extends GetxController {
     }
   }
 
-  Future<void> pickMRIFile() async {
-    FilePickerResult? result = await FilePicker.platform
-        .pickFiles(type: FileType.image, allowMultiple: false);
-    if (result != null) {
-      selectedFile.value = result.files.first;
-      selectedFileName.value = result.files.first.name;
-    }
-  }
-
-  Future<void> uploadAndAnalyze() async {
-    if (selectedFile.value == null) {
-      Get.snackbar("Error", "File MRI belum dipilih!",
-          backgroundColor: Colors.red, colorText: Colors.white);
-      return;
-    }
-
-    try {
-      isLoading.value = true;
-      String? token = getToken();
-      var request = http.MultipartRequest(
-          'POST', Uri.parse('${ApiConfig.baseUrl}/upload-mri/'));
-      request.headers['Authorization'] = 'Bearer $token';
-
-      request.fields['nama'] = namaPasienC.text;
-      request.fields['id_pasien'] = idRmC.text;
-      request.fields['tgl_lahir'] = tglLahirC.text;
-      request.fields['status'] = selectedStatus.value;
-      request.fields['jenis_mri'] = selectedJenisMRI.value;
-      request.fields['catatan'] = catatanC.text.isEmpty ? "-" : catatanC.text;
-
-      if (selectedFile.value!.bytes != null) {
-        request.files.add(http.MultipartFile.fromBytes(
-            'file', selectedFile.value!.bytes!,
-            filename: selectedFile.value!.name));
-      } else if (selectedFile.value!.path != null) {
-        request.files.add(await http.MultipartFile.fromPath(
-            'file', selectedFile.value!.path!));
-      }
-
-      var streamedResponse = await request.send();
-      var response = await http.Response.fromStream(streamedResponse);
-
-      if (response.statusCode == 200) {
-        var data = jsonDecode(response.body);
-        Get.defaultDialog(
-            title: "Analisis Selesai",
-            middleText: "Hasil Prediksi: ${data['hasil_ai']}",
-            textConfirm: "OK",
-            confirmTextColor: Colors.white,
-            onConfirm: () {
-              Get.back();
-              fetchRiwayat();
-              fetchDashboardSummary();
-              patientViewStep.value = 1;
-            });
-      } else {
-        Get.snackbar("Gagal", "Error: ${response.body}");
-      }
-    } catch (e) {
-      Get.snackbar("Error", "Gagal koneksi server");
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
   Future<void> fetchAnalysisDetail(String analysisId) async {
     isLoadingDetail.value = true;
     detailAnalysisData.value = {};
 
     final String url = "${ApiConfig.baseUrl}/analisis/$analysisId";
 
-    debugPrint("[WEB DEBUG] Fetching URL: $url");
-
     try {
       final response = await http.get(Uri.parse(url));
-
-      debugPrint("[WEB DEBUG] Status Code: ${response.statusCode}");
 
       if (response.statusCode == 200) {
         var data = json.decode(response.body);
 
         if (data['notes_dokter'] == null) {
-          data['notes_dokter'] = "Belum ada catatan dokter";
+          data['notes_dokter'] = "-";
         }
-
         if (data['notes_radiolog'] == null) {
-          data['notes_radiolog'] = "-";
+          data['notes_radiolog'] = "Belum ada catatan radiolog";
         }
 
         detailAnalysisData.value = data;
-        debugPrint("[WEB DEBUG] Data Berhasil Disimpan & Siap Tampil!");
       } else {
         Get.snackbar("Gagal", "Server Error: ${response.statusCode}");
-        debugPrint("Response Body: ${response.body}");
       }
     } catch (e) {
       debugPrint("Error: $e");
@@ -519,10 +416,42 @@ class RadiologController extends GetxController {
     }
   }
 
+  Future<void> saveDoctorNotes(String analysisId, String notes) async {
+    try {
+      isLoading.value = true;
+      String? token = getToken();
+
+      var response = await http.put(
+        Uri.parse('${ApiConfig.baseUrl}/analisis/$analysisId/update-notes/'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode({
+          "notes_dokter": notes,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        detailAnalysisData['notes_dokter'] = notes;
+        detailAnalysisData.refresh();
+
+        Get.snackbar("Sukses", "Catatan dokter berhasil disimpan ke server",
+            backgroundColor: Colors.red, colorText: Colors.white);
+      } else {
+        Get.snackbar("Gagal", "Gagal menyimpan: ${response.body}",
+            backgroundColor: Colors.red, colorText: Colors.white);
+      }
+    } catch (e) {
+      Get.snackbar("Error", "Terjadi kesalahan koneksi");
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
   Future<void> logout() async {
     try {
       String? token = getToken();
-
       if (token != null) {
         await http.post(
           Uri.parse('${ApiConfig.baseUrl}/logout/'),
@@ -535,7 +464,6 @@ class RadiologController extends GetxController {
       box.remove('token');
       box.remove('role');
       box.remove('username');
-
       Get.offAll(() => const LoginPage());
     }
   }

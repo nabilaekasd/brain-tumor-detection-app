@@ -5,7 +5,7 @@ class ApiConfig {
   static const String _vpsUrl = "http://103.xxx.xxx.xxx:8000";
 
   // URL untuk di laptop (Development)
-  static const String _localUrl = "http://localhost:8000";
+  static const String _localUrl = "http://127.0.0.1:8000";
 
   static String get baseUrl {
     if (kReleaseMode) {

@@ -1,11 +1,13 @@
 import 'package:axon_vision/controllers/login_controller.dart';
-import 'package:axon_vision/controllers/radiolog_controller.dart';
+import 'package:axon_vision/controllers/dokter_controller.dart'; // Controller Dokter
 import 'package:axon_vision/pages/global_widgets/custom/custom_ripple_button.dart';
 import 'package:axon_vision/pages/global_widgets/frame/frame_scaffold.dart';
 import 'package:axon_vision/pages/global_widgets/text_fonts/poppins_text_view.dart';
-import 'package:axon_vision/pages/radiolog/radiolog_patient_view.dart';
-import 'package:axon_vision/pages/radiolog/radiolog_profile_view.dart';
-import 'package:axon_vision/pages/detail_analisis_page.dart';
+
+// Akan merah sebentar, ini yang akan kita buat di langkah 3
+import 'package:axon_vision/pages/dokter/dokter_patient_view.dart';
+import 'package:axon_vision/pages/dokter/dokter_profile_view.dart';
+
 import 'package:axon_vision/utils/api_config.dart';
 import 'package:axon_vision/utils/app_colors.dart';
 import 'package:axon_vision/utils/asset_list.dart';
@@ -15,9 +17,11 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
-// Widget Konten Dashboard
-class RadiologHomeView extends StatelessWidget {
-  const RadiologHomeView({super.key});
+// ========================================================================
+// 1. WIDGET KONTEN DASHBOARD (HOME) DOKTER
+// ========================================================================
+class DokterHomeView extends StatelessWidget {
+  const DokterHomeView({super.key});
 
   String getGreeting() {
     var hour = DateTime.now().hour;
@@ -29,7 +33,7 @@ class RadiologHomeView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final RadiologController controller = Get.find<RadiologController>();
+    final DokterController controller = Get.find<DokterController>();
     String todayDate =
         DateFormat('EEE, d MMM yyyy', 'id_ID').format(DateTime.now());
 
@@ -101,14 +105,14 @@ class RadiologHomeView extends StatelessWidget {
                     ),
                     const SizedBox(width: 20),
                     _buildModernStatCard(
-                      title: "Menunggu Analisis",
+                      title: "Menunggu Hasil MRI",
                       value: "${controller.dashboardSummary['total_menunggu']}",
                       icon: Icons.hourglass_top_rounded,
                       color: const Color(0xffff9a9e),
                     ),
                     const SizedBox(width: 20),
                     _buildModernStatCard(
-                      title: "Selesai",
+                      title: "Hasil Tersedia",
                       value: "${controller.dashboardSummary['total_selesai']}",
                       icon: Icons.check_circle_rounded,
                       color: const Color(0xff43e97b),
@@ -300,13 +304,16 @@ class RadiologHomeView extends StatelessWidget {
   }
 }
 
-class RadiologDashboardPage extends StatelessWidget {
-  const RadiologDashboardPage({super.key});
+// ========================================================================
+// 2. KERANGKA UTAMA DASHBOARD DOKTER
+// ========================================================================
+class DokterDashboardPage extends StatelessWidget {
+  const DokterDashboardPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     SizeConfig().init(context);
-    final RadiologController controller = Get.put(RadiologController());
+    final DokterController controller = Get.put(DokterController());
 
     return FrameScaffold(
       heightBar: 0,
@@ -471,11 +478,10 @@ class RadiologDashboardPage extends StatelessWidget {
                             ),
                             const SizedBox(width: 16),
                             Obx(() => PoppinsTextView(
-                                  value: controller.currentHeaderTitle,
-                                  size: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.blueDark,
-                                )),
+                                value: controller.currentHeaderTitle,
+                                size: 20,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.blueDark)),
                             const Spacer(),
                             Obx(() => Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
@@ -602,10 +608,10 @@ class RadiologDashboardPage extends StatelessWidget {
   }
 
   // Content Switcher
-  Widget _buildContent(RadiologController controller) {
-    if (controller.activeIndex.value == 0) return const RadiologHomeView();
-    if (controller.activeIndex.value == 1) return const RadiologPatientView();
-    if (controller.activeIndex.value == 2) return const RadiologProfileView();
+  Widget _buildContent(DokterController controller) {
+    if (controller.activeIndex.value == 0) return const DokterHomeView();
+    if (controller.activeIndex.value == 1) return const DokterPatientView();
+    if (controller.activeIndex.value == 2) return const DokterProfileView();
     return const SizedBox();
   }
 
@@ -654,8 +660,7 @@ class RadiologDashboardPage extends StatelessWidget {
   }
 
   void _showLogoutDialog() {
-    final RadiologController controller = Get.find<RadiologController>();
-
+    final DokterController controller = Get.find<DokterController>();
     Get.defaultDialog(
         title: "Konfirmasi Logout",
         middleText: "Yakin ingin keluar?",

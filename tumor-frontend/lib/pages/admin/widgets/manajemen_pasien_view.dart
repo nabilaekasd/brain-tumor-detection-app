@@ -9,7 +9,6 @@ class ManajemenPasienView extends GetView<AdminController> {
 
   @override
   Widget build(BuildContext context) {
-    // Panggil fetch data saat halaman ini dibuka
     WidgetsBinding.instance.addPostFrameCallback((_) {
       controller.fetchPatients();
     });
@@ -17,7 +16,7 @@ class ManajemenPasienView extends GetView<AdminController> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // --- HEADER ---
+        // Header
         PoppinsTextView(
           value: "Manajemen Data Pasien",
           size: 24,
@@ -32,7 +31,7 @@ class ManajemenPasienView extends GetView<AdminController> {
         ),
         const SizedBox(height: 24),
 
-        // --- SEARCH BAR ---
+        // Search Bar
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
@@ -46,7 +45,6 @@ class ManajemenPasienView extends GetView<AdminController> {
                 child: SizedBox(
                   height: 40,
                   child: TextField(
-                    // Gunakan controller dan fungsi search untuk pasien
                     onChanged: (val) => controller.searchPatient(val),
                     style: const TextStyle(fontFamily: 'Poppins', fontSize: 13),
                     decoration: InputDecoration(
@@ -102,7 +100,7 @@ class ManajemenPasienView extends GetView<AdminController> {
         ),
         const SizedBox(height: 20),
 
-        // --- TABEL DATA ---
+        // Tabel Data
         Expanded(
           child: Container(
             width: double.infinity,
@@ -121,7 +119,7 @@ class ManajemenPasienView extends GetView<AdminController> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // HEADER TABEL
+                // Header Tabel
                 Container(
                   padding: const EdgeInsets.symmetric(
                     vertical: 12,
@@ -197,7 +195,7 @@ class ManajemenPasienView extends GetView<AdminController> {
                   ),
                 ),
 
-                // ISI TABEL
+                // Isi Tabel
                 Expanded(
                   child: Obx(() {
                     if (controller.isLoading.value) {
@@ -216,7 +214,7 @@ class ManajemenPasienView extends GetView<AdminController> {
                     return ListView.separated(
                       padding: EdgeInsets.zero,
                       itemCount: controller.filteredPatientList.length,
-                      separatorBuilder: (context, index) =>
+                      separatorBuilder: (c, i) =>
                           const Divider(height: 1, color: Color(0xffEEEEEE)),
                       itemBuilder: (context, index) {
                         final p = controller.filteredPatientList[index];
@@ -336,7 +334,7 @@ class ManajemenPasienView extends GetView<AdminController> {
                   }),
                 ),
 
-                // PAGINATION FOOTER
+                // Pagination
                 Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -512,6 +510,7 @@ class ManajemenPasienView extends GetView<AdminController> {
                             onChanged: (val) {
                               if (val != null) {
                                 controller.jenisKelaminPasien.value = val;
+                                debugPrint("Pilih Gender: $val");
                               }
                             },
                           ),

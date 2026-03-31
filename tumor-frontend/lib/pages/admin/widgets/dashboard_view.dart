@@ -65,10 +65,13 @@ class DashboardView extends GetView<AdminController> {
                       const Icon(Icons.calendar_today_rounded,
                           size: 16, color: Color(0xff2C3E50)),
                       const SizedBox(width: 8),
-                      Text("2026",
-                          style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xff2C3E50))),
+                      Text(
+                        "${DateTime.now().year}",
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xff2C3E50),
+                        ),
+                      ),
                     ],
                   ),
                 )
@@ -115,12 +118,11 @@ class DashboardView extends GetView<AdminController> {
                   child: Padding(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    child: Text(
-                      "Lihat Semua",
-                      style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xff4facfe)),
+                    child: PoppinsTextView(
+                      value: "Lihat Semua",
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xff4facfe),
                     ),
                   ),
                 )
@@ -154,7 +156,8 @@ class DashboardView extends GetView<AdminController> {
                         child: Center(
                             child: PoppinsTextView(
                                 value: "Belum ada aktivitas.",
-                                color: Colors.grey))),
+                                color: Colors.grey,
+                                fontSize: 14))),
                   );
                 }
 

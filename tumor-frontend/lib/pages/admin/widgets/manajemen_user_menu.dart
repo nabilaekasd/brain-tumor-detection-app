@@ -210,7 +210,7 @@ class ManajemenUserMenu extends GetView<AdminController> {
                     return ListView.separated(
                       padding: EdgeInsets.zero,
                       itemCount: controller.currentUsers.length,
-                      separatorBuilder: (context, index) =>
+                      separatorBuilder: (c, i) =>
                           const Divider(height: 1, color: Color(0xffEEEEEE)),
                       itemBuilder: (context, index) {
                         final user = controller.currentUsers[index];

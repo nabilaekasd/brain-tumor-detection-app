@@ -77,19 +77,15 @@ class AdminDashboardPage extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // ====================================================
-                          // LOGO AREA (DIUBAH: LEBIH BESAR & TENGAH)
-                          // ====================================================
                           Container(
                             padding: const EdgeInsets.symmetric(
                               vertical: 40,
-                            ), // Padding vertikal lebih lega
-                            alignment: Alignment.center, // POSISI KE TENGAH
+                            ),
+                            alignment: Alignment.center,
                             child: Image.asset(
                               AssetList.axonLogo,
                               fit: BoxFit.contain,
-                              height:
-                                  120, // UKURAN DIPERBESAR (dari 60 jadi 120)
+                              height: 120,
                               errorBuilder: (c, e, s) => Icon(
                                 Icons.shield,
                                 size: 90,
@@ -102,10 +98,79 @@ class AdminDashboardPage extends StatelessWidget {
                           // MENU LIST
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: _AdminLeftMenu(
-                              activeIndex: controller.activeMenuIndex.value,
-                              onMenuTap: (index) =>
-                                  controller.changeMenu(index),
+                            child: Column(
+                              children: [
+                                _buildMenuItem(
+                                  index: 0,
+                                  label: 'Dashboard',
+                                  icon: Icons.dashboard_outlined,
+                                  isActive:
+                                      controller.activeMenuIndex.value == 0,
+                                  onTap: () => controller.changeMenu(0),
+                                ),
+                                const SizedBox(height: 8),
+                                _buildMenuItem(
+                                  index: 1,
+                                  label: 'Kelola Akun',
+                                  icon: Icons.manage_accounts_outlined,
+                                  isActive:
+                                      controller.activeMenuIndex.value == 1,
+                                  onTap: () => controller.changeMenu(1),
+                                ),
+                                const SizedBox(height: 8),
+                                _buildMenuItem(
+                                  index: 2,
+                                  label: 'Manajemen Data Pasien',
+                                  icon: Icons.people_outline,
+                                  isActive:
+                                      controller.activeMenuIndex.value == 2,
+                                  onTap: () => controller.changeMenu(2),
+                                ),
+                                const SizedBox(height: 8),
+                                _buildMenuItem(
+                                  index: 3,
+                                  label: 'Monitoring Log',
+                                  icon: Icons.receipt_long_outlined,
+                                  isActive:
+                                      controller.activeMenuIndex.value == 3,
+                                  onTap: () => controller.changeMenu(3),
+                                ),
+                                const SizedBox(height: 8),
+                                _buildMenuItem(
+                                  index: 4,
+                                  label: 'Pengaturan Profil',
+                                  icon: Icons.settings_outlined,
+                                  isActive:
+                                      controller.activeMenuIndex.value == 4,
+                                  onTap: () => controller.changeMenu(4),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Spacer(),
+
+                          Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Divider(
+                                    color:
+                                        AppColors.grey.withValues(alpha: 0.5),
+                                    thickness: 0.5),
+                                const SizedBox(height: 10),
+                                PoppinsTextView(
+                                  value: "Axon Vision v1.0.0",
+                                  size: 11,
+                                  color: AppColors.grey,
+                                ),
+                                const SizedBox(height: 4),
+                                PoppinsTextView(
+                                  value: "© 2025 All Rights Reserved",
+                                  size: 10,
+                                  color: AppColors.grey,
+                                ),
+                              ],
                             ),
                           ),
                         ],
@@ -314,114 +379,15 @@ class AdminDashboardPage extends StatelessWidget {
     }
   }
 
-  void _showLogoutDialog() {
-    Get.defaultDialog(
-      title: "Konfirmasi Logout",
-      titleStyle: const TextStyle(
-        fontFamily: 'Poppins',
-        fontWeight: FontWeight.bold,
-        fontSize: 18,
-      ),
-      middleText: "Apakah Anda yakin ingin keluar?",
-      middleTextStyle: const TextStyle(fontFamily: 'Poppins', fontSize: 14),
-      textConfirm: "Ya, Keluar",
-      textCancel: "Batal",
-      confirmTextColor: Colors.white,
-      buttonColor: Colors.redAccent,
-      radius: 12,
-      onConfirm: () {
-        Get.back();
-        Get.find<AdminController>().logout();
-      },
-    );
-  }
-}
-
-// =========================================================
-// WIDGET SIDEBAR KHUSUS ADMIN (FIXED SIZES)
-// =========================================================
-class _AdminLeftMenu extends StatelessWidget {
-  final Function(int) onMenuTap;
-  final int activeIndex;
-
-  const _AdminLeftMenu({required this.onMenuTap, required this.activeIndex});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 10),
-        _buildMenuItem(
-          index: 0,
-          label: 'Dashboard',
-          icon: Icons.dashboard_outlined,
-          isActive: activeIndex == 0,
-        ),
-        const SizedBox(height: 8),
-        _buildMenuItem(
-          index: 1,
-          label: 'Kelola Akun',
-          icon: Icons.manage_accounts_outlined,
-          isActive: activeIndex == 1,
-        ),
-        const SizedBox(height: 8),
-        _buildMenuItem(
-          index: 2,
-          label: 'Manajemen Data Pasien',
-          icon: Icons.people_outline,
-          isActive: activeIndex == 2,
-        ),
-        const SizedBox(height: 8),
-        _buildMenuItem(
-          index: 3,
-          label: 'Monitoring Log',
-          icon: Icons.receipt_long_outlined,
-          isActive: activeIndex == 3,
-        ),
-        const SizedBox(height: 8),
-        _buildMenuItem(
-          index: 4,
-          label: 'Pengaturan Profil',
-          icon: Icons.settings_outlined,
-          isActive: activeIndex == 4,
-        ),
-        const SizedBox(height: 40),
-        Divider(color: AppColors.grey.withValues(alpha: 0.5), thickness: 0.5),
-        const SizedBox(height: 20),
-        Padding(
-          padding: const EdgeInsets.only(left: 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              PoppinsTextView(
-                value: 'Axon Vision v1.0.0',
-                size: 11,
-                color: AppColors.grey,
-                fontWeight: FontWeight.w500,
-              ),
-              const SizedBox(height: 4),
-              PoppinsTextView(
-                value: '© 2025 All Rights Reserved',
-                size: 10,
-                color: AppColors.grey,
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  // Style Menu Item
   Widget _buildMenuItem({
     required int index,
     required String label,
     required bool isActive,
     required IconData icon,
+    required VoidCallback onTap,
   }) {
     return CustomRippleButton(
-      onTap: () => onMenuTap(index),
+      onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
           color: isActive
@@ -458,6 +424,28 @@ class _AdminLeftMenu extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  void _showLogoutDialog() {
+    Get.defaultDialog(
+      title: "Konfirmasi Logout",
+      titleStyle: const TextStyle(
+        fontFamily: 'Poppins',
+        fontWeight: FontWeight.bold,
+        fontSize: 18,
+      ),
+      middleText: "Apakah Anda yakin ingin keluar?",
+      middleTextStyle: const TextStyle(fontFamily: 'Poppins', fontSize: 14),
+      textConfirm: "Ya, Keluar",
+      textCancel: "Batal",
+      confirmTextColor: Colors.white,
+      buttonColor: Colors.redAccent,
+      radius: 12,
+      onConfirm: () {
+        Get.back();
+        Get.find<AdminController>().logout();
+      },
     );
   }
 }

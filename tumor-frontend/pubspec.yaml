@@ -12,31 +12,35 @@ dependencies:
     sdk: flutter
 
   # --- NETWORK & STORAGE ---
-  http: ^1.2.0           # Saya pilih versi aman
+  http: ^1.2.0
   get_storage: ^2.1.1
 
   # --- STATE MANAGEMENT & NAVIGATION ---
-  get: ^4.7.2            # Balik ke versi tinggi (Punya Anda)
+  get: ^4.7.2
   go_router: ^13.0.0
 
   # --- UI & FONTS ---
-  google_fonts: ^6.3.2   # Balik ke versi tinggi
+  google_fonts: ^6.3.2
   cupertino_icons: ^1.0.8
-  intl: ^0.20.0          # Wajib tinggi untuk month_year_picker
+  intl: ^0.20.0
 
   # --- WIDGETS TAMBAHAN ---
-  calendar_date_picker2: ^2.0.1  # Balik ke versi 2.0+ (Biar kodingan kalender ga error)
+  calendar_date_picker2: ^2.0.1
   month_year_picker: ^0.5.0+1
-  syncfusion_flutter_datagrid: ^31.2.3 # Balik ke versi tinggi
+  syncfusion_flutter_datagrid: ^31.2.3
 
   # --- FILE & MEDIA ---
-  image_picker: ^1.2.1   # Pakai versi terbaru yang Anda punya
-  file_picker: ^10.3.8   # Balik ke versi 10+ (Biar fungsi file picker jalan)
+  image_picker: ^1.2.1
+  file_picker: ^10.3.8
+
+  # --- FIX ERROR DETAIL_ANALISIS_VIEW ---
+  webview_flutter: ^4.10.0
+  pointer_interceptor: ^0.10.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^5.0.0  # Balik ke versi tinggi
+  flutter_lints: ^5.0.0
 
 flutter:
   uses-material-design: true

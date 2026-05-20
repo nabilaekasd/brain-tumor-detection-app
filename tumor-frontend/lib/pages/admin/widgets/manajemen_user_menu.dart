@@ -14,18 +14,10 @@ class ManajemenUserMenu extends GetView<AdminController> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // --- HEADER ---
-        PoppinsTextView(
-          value: "Manajemen Pengguna",
-          size: 24,
-          fontWeight: FontWeight.bold,
-          color: AppColors.blueDark,
-        ),
-        const SizedBox(height: 8),
         const PoppinsTextView(
           value:
               "Kelola akun Dokter, Radiolog, dan Admin (Edit, Hapus, Tambah).",
-          size: 14,
+          size: 12,
           color: Colors.grey,
         ),
         const SizedBox(height: 24),
@@ -302,18 +294,6 @@ class ManajemenUserMenu extends GetView<AdminController> {
                                         );
                                       },
                                     ),
-                                    const SizedBox(width: 16),
-                                    IconButton(
-                                      constraints: const BoxConstraints(),
-                                      padding: EdgeInsets.zero,
-                                      icon: const Icon(
-                                        Icons.delete_rounded,
-                                        color: Colors.red,
-                                        size: 18,
-                                      ),
-                                      onPressed: () =>
-                                          _showDeleteConfirmDialog(user),
-                                    ),
                                   ],
                                 ),
                               ),
@@ -447,7 +427,7 @@ class ManajemenUserMenu extends GetView<AdminController> {
     );
   }
 
-  // --- DIALOG FORM (DENGAN MATA PASSWORD) ---
+  // --- DIALOG FORM (RESPONSIVE & STANDAR FONT 14/12) ---
   void _showUserDialog(
     BuildContext context, {
     required bool isEdit,
@@ -464,203 +444,183 @@ class ManajemenUserMenu extends GetView<AdminController> {
       Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         backgroundColor: Colors.white,
+        insetPadding: const EdgeInsets.all(16), // Jarak aman layar HP
         child: Container(
           width: 480,
           padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  PoppinsTextView(
-                    value: isEdit ? "Edit Pengguna" : "Tambah User",
-                    size: 16,
+          // BUNGKUS DENGAN SCROLL AGAR AMAN DARI KEYBOARD HP
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    PoppinsTextView(
+                      value: isEdit ? "Edit Pengguna" : "Tambah User",
+                      size: 14, // 👈 JUDUL 14
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.blueDark,
+                    ),
+                    IconButton(
+                      onPressed: () => Get.back(),
+                      icon: const Icon(Icons.close, size: 20),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+                const Divider(height: 24),
+                _inputField("Nama Lengkap", controller.fullNameC),
+                const SizedBox(height: 16),
+                _inputField("Username", controller.usernameC, readOnly: isEdit),
+                const SizedBox(height: 16),
+
+                if (isEdit) ...[
+                  const PoppinsTextView(
+                    value: "Ganti Password (Opsional)",
+                    size: 12, // 👈 ISI 12
                     fontWeight: FontWeight.bold,
-                    color: AppColors.blueDark,
+                    color: Colors.orange,
                   ),
-                  IconButton(
-                    onPressed: () => Get.back(),
-                    icon: const Icon(Icons.close, size: 20),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
+                  const SizedBox(height: 8),
+                  _inputField(
+                    "Password Lama",
+                    controller.oldPasswordC,
+                    hint: "Wajib jika ganti password",
+                    obscureState: controller.isObscureOld,
+                  ),
+                  const SizedBox(height: 12),
+                  _inputField(
+                    "Password Baru",
+                    controller.newPasswordC,
+                    hint: "Password baru",
+                    obscureState: controller.isObscureNew,
+                  ),
+                ] else ...[
+                  _inputField(
+                    "Password",
+                    controller.newPasswordC,
+                    obscureState: controller.isObscureNew,
                   ),
                 ],
-              ),
-              const Divider(height: 24),
-              _inputField("Nama Lengkap", controller.fullNameC),
-              const SizedBox(height: 16),
-              _inputField("Username", controller.usernameC, readOnly: isEdit),
-              const SizedBox(height: 16),
-              if (isEdit) ...[
-                const PoppinsTextView(
-                  value: "Ganti Password (Opsional)",
-                  size: 12,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.orange,
-                ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
 
-                // FIELD PASSWORD LAMA (Pakai obscureState: controller.isObscureOld)
-                _inputField(
-                  "Password Lama",
-                  controller.oldPasswordC,
-                  hint: "Wajib jika ganti password",
-                  obscureState: controller.isObscureOld,
-                ),
-                const SizedBox(height: 8),
-
-                // FIELD PASSWORD BARU (Pakai obscureState: controller.isObscureNew)
-                _inputField(
-                  "Password Baru",
-                  controller.newPasswordC,
-                  hint: "Password baru",
-                  obscureState: controller.isObscureNew,
-                ),
-              ] else ...[
-                _inputField(
-                  "Password",
-                  controller.newPasswordC,
-                  obscureState: controller.isObscureNew,
-                ),
-              ],
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        PoppinsTextView(
-                          value: "Role",
-                          size: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.blueDark,
-                        ),
-                        const SizedBox(height: 6),
-                        Obx(
-                          () => Container(
-                            height: 40,
-                            padding: const EdgeInsets.symmetric(horizontal: 10),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey.shade300),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                value: controller.selectedRole.value,
-                                isExpanded: true,
-                                items: const [
-                                  DropdownMenuItem(
-                                    value: "dokter",
-                                    child: Text(
-                                      "Dokter",
-                                      style: TextStyle(fontSize: 13),
-                                    ),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: "radiolog",
-                                    child: Text(
-                                      "Radiolog",
-                                      style: TextStyle(fontSize: 13),
-                                    ),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: "admin",
-                                    child: Text(
-                                      "Admin",
-                                      style: TextStyle(fontSize: 13),
-                                    ),
-                                  ),
-                                ],
-                                onChanged: (v) =>
-                                    controller.selectedRole.value = v!,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                // ROLE (Dibuat full-width memanjang ke bawah agar responsif di HP)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    PoppinsTextView(
+                      value: "Role",
+                      size: 12, // 👈 ISI 12
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.blueDark,
                     ),
-                  ),
-                  if (isEdit) ...[
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          PoppinsTextView(
-                            value: "Status",
-                            size: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.blueDark,
-                          ),
-                          SizedBox(
-                            height: 40,
-                            child: Obx(
-                              () => SwitchListTile(
-                                contentPadding: EdgeInsets.zero,
-                                title: Text(
-                                  controller.selectedStatus.value
-                                      ? "Aktif"
-                                      : "Nonaktif",
-                                  style: const TextStyle(fontSize: 12),
-                                ),
-                                value: controller.selectedStatus.value,
-                                onChanged: (val) =>
-                                    controller.selectedStatus.value = val,
+                    const SizedBox(height: 6),
+                    Obx(
+                      () => Container(
+                        height: 40,
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: controller.selectedRole.value,
+                            isExpanded: true,
+                            items: const [
+                              DropdownMenuItem(
+                                value: "dokter",
+                                child: Text("Dokter",
+                                    style:
+                                        TextStyle(fontSize: 12)), // 👈 ISI 12
                               ),
-                            ),
+                              DropdownMenuItem(
+                                value: "radiolog",
+                                child: Text("Radiolog",
+                                    style: TextStyle(fontSize: 12)),
+                              ),
+                              DropdownMenuItem(
+                                value: "admin",
+                                child: Text("Admin",
+                                    style: TextStyle(fontSize: 12)),
+                              ),
+                            ],
+                            onChanged: (v) =>
+                                controller.selectedRole.value = v!,
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   ],
+                ),
+
+                // STATUS (Ditumpuk di bawah Role, bukan di sebelahnya lagi)
+                if (isEdit) ...[
+                  const SizedBox(height: 16),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      PoppinsTextView(
+                        value: "Status",
+                        size: 12, // 👈 ISI 12
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.blueDark,
+                      ),
+                      SizedBox(
+                        height: 40,
+                        child: Obx(
+                          () => SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(
+                              controller.selectedStatus.value
+                                  ? "Aktif"
+                                  : "Nonaktif",
+                              style: const TextStyle(fontSize: 12), // 👈 ISI 12
+                            ),
+                            value: controller.selectedStatus.value,
+                            onChanged: (val) =>
+                                controller.selectedStatus.value = val,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                height: 45,
-                child: ElevatedButton(
-                  onPressed: () => isEdit
-                      ? controller.updateUser(user!.id)
-                      : controller.addUser(),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.blueDark,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 40, // 👈 Samakan tingginya dengan input (40)
+                  child: ElevatedButton(
+                    onPressed: () => isEdit
+                        ? controller.updateUser(user!.id)
+                        : controller.addUser(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.blueDark,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: PoppinsTextView(
+                      value: isEdit ? "Simpan Perubahan" : "Simpan Data",
+                      size: 12, // 👈 ISI 12
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  child: PoppinsTextView(
-                    value: isEdit ? "Simpan Perubahan" : "Simpan Data",
-                    size: 13,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  void _showDeleteConfirmDialog(UserModel user) {
-    Get.defaultDialog(
-      title: "Hapus User",
-      titleStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-      middleText: "Yakin ingin menghapus ${user.fullName}?",
-      textConfirm: "Hapus",
-      textCancel: "Batal",
-      confirmTextColor: Colors.white,
-      buttonColor: Colors.red,
-      onConfirm: () => controller.deleteUser(user.id),
-    );
-  }
-
-  // --- WIDGET INPUT FIELD YANG SUDAH DI-UPDATE (TERIMA obscureState) ---
+  // --- WIDGET INPUT FIELD (STANDAR FONT 12) ---
   Widget _inputField(
     String label,
     TextEditingController c, {
@@ -673,7 +633,7 @@ class ManajemenUserMenu extends GetView<AdminController> {
       children: [
         PoppinsTextView(
           value: label,
-          size: 12,
+          size: 12, // 👈 ISI 12
           fontWeight: FontWeight.w600,
           color: AppColors.blueDark,
         ),
@@ -681,13 +641,14 @@ class ManajemenUserMenu extends GetView<AdminController> {
         SizedBox(
           height: 40,
           child: obscureState != null
-              // Jika ada obscureState, pakai OBX agar ikon mata berfungsi
               ? Obx(
                   () => TextField(
                     controller: c,
-                    obscureText: obscureState.value, // Bind ke variable
+                    obscureText: obscureState.value,
                     readOnly: readOnly,
-                    style: const TextStyle(fontSize: 13, fontFamily: 'Poppins'),
+                    style: const TextStyle(
+                        fontSize: 12,
+                        fontFamily: 'Poppins'), // 👈 TEXT INPUT 12
                     decoration: InputDecoration(
                       hintText: hint,
                       hintStyle: const TextStyle(
@@ -700,10 +661,8 @@ class ManajemenUserMenu extends GetView<AdminController> {
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide(color: Colors.grey.shade300),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                      ),
-                      // IKON MATA
+                      contentPadding:
+                          const EdgeInsets.symmetric(horizontal: 12),
                       suffixIcon: IconButton(
                         icon: Icon(
                           obscureState.value
@@ -717,11 +676,11 @@ class ManajemenUserMenu extends GetView<AdminController> {
                     ),
                   ),
                 )
-              // Jika tidak ada obscureState (Text biasa), render normal
               : TextField(
                   controller: c,
                   readOnly: readOnly,
-                  style: const TextStyle(fontSize: 13, fontFamily: 'Poppins'),
+                  style: const TextStyle(
+                      fontSize: 12, fontFamily: 'Poppins'), // 👈 TEXT INPUT 12
                   decoration: InputDecoration(
                     hintText: hint,
                     hintStyle: const TextStyle(

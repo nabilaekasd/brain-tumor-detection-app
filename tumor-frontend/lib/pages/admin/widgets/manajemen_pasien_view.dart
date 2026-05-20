@@ -285,44 +285,6 @@ class ManajemenPasienView extends GetView<AdminController> {
                                         );
                                       },
                                     ),
-                                    const SizedBox(width: 16),
-                                    IconButton(
-                                      constraints: const BoxConstraints(),
-                                      padding: EdgeInsets.zero,
-                                      icon: const Icon(
-                                        Icons.delete_rounded,
-                                        color: Colors.red,
-                                        size: 18,
-                                      ),
-                                      onPressed: () {
-                                        Get.defaultDialog(
-                                          title: "Nonaktifkan Pasien",
-                                          titleStyle: TextStyle(
-                                            fontFamily: 'Poppins',
-                                            fontWeight: FontWeight.bold,
-                                            color: AppColors.blueDark,
-                                          ),
-                                          middleText:
-                                              "Data medis tidak akan dihapus, hanya dinonaktifkan. Lanjutkan?",
-                                          middleTextStyle: const TextStyle(
-                                            fontFamily: 'Poppins',
-                                            fontSize: 13,
-                                          ),
-                                          textConfirm: "Ya, Nonaktifkan",
-                                          confirmTextColor: Colors.white,
-                                          buttonColor: Colors.redAccent,
-                                          textCancel: "Batal",
-                                          cancelTextColor: AppColors.blueDark,
-                                          onConfirm: () {
-                                            controller.fillPatientForm(p);
-                                            controller.statusPasien.value =
-                                                "Tidak Aktif";
-                                            controller.updatePatient(p.id);
-                                            Get.back();
-                                          },
-                                        );
-                                      },
-                                    ),
                                   ],
                                 ),
                               ),

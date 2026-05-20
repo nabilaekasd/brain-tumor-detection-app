@@ -3,15 +3,21 @@ import 'dart:math';
 import 'package:axon_vision/models/patient_model.dart';
 import 'package:axon_vision/pages/login/login_page.dart';
 import 'package:axon_vision/utils/api_config.dart';
+import 'package:axon_vision/controllers/notification_controller.dart';
+import 'package:axon_vision/helpers/snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
+import 'dart:async';
 
 class RadiologController extends GetxController {
   final box = GetStorage();
+
+  Timer? _pollingTimer;
 
   // Variabel Data
   var activeIndex = 0.obs;
@@ -22,6 +28,7 @@ class RadiologController extends GetxController {
   var isLoading = false.obs;
   var selectedAnalysisId = "".obs;
   var isSortNewest = true.obs;
+  var selectedDateFilter = Rxn<DateTime>();
 
   // Data Profil
   var displayName = 'Radiolog'.obs;
@@ -34,6 +41,9 @@ class RadiologController extends GetxController {
       {"total_pasien": 0, "total_menunggu": 0, "total_selesai": 0}.obs;
   var riwayatScanList = <dynamic>[].obs;
   var selectedPatient = Rxn<PatientModel>();
+
+  var notificationsList = <dynamic>[].obs;
+  var unreadNotifCount = 0.obs;
 
   // Pagination & Data Pasien
   var allPatientList = <PatientModel>[].obs;
@@ -86,6 +96,21 @@ class RadiologController extends GetxController {
   void onInit() {
     super.onInit();
     refreshAllData();
+    _pollingTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      fetchDashboardSummary();
+      fetchRiwayat();
+      fetchNotifications();
+
+      if (Get.isRegistered<NotificationController>()) {
+        Get.find<NotificationController>().fetchNotifications();
+      }
+    });
+  }
+
+  @override
+  void onClose() {
+    _pollingTimer?.cancel();
+    super.onClose();
   }
 
   void refreshAllData() {
@@ -102,6 +127,14 @@ class RadiologController extends GetxController {
       return null;
     }
     return token;
+  }
+
+  void filterHistoryByDate(DateTime date) {
+    selectedDateFilter.value = date;
+  }
+
+  void clearDateFilter() {
+    selectedDateFilter.value = null;
   }
 
   void nextPatientPage() {
@@ -228,12 +261,24 @@ class RadiologController extends GetxController {
   List<dynamic> get sortedPatientHistory {
     var tempList = List<dynamic>.from(selectedPatientHistory);
 
+    if (selectedDateFilter.value != null) {
+      String filterDateStr =
+          DateFormat('dd/MM/yyyy').format(selectedDateFilter.value!);
+
+      tempList = tempList.where((scan) {
+        return scan['tanggal_periksa'].toString() == filterDateStr;
+      }).toList();
+    }
+
     DateTime parseDate(String dateStr) {
       try {
         var parts = dateStr.split('/');
         if (parts.length == 3) {
           return DateTime(
-              int.parse(parts[2]), int.parse(parts[1]), int.parse(parts[0]));
+            int.parse(parts[2]),
+            int.parse(parts[1]),
+            int.parse(parts[0]),
+          );
         }
       } catch (e) {
         return DateTime(1970);
@@ -277,15 +322,41 @@ class RadiologController extends GetxController {
   }
 
   Future<void> saveProfile() async {
-    if (currentUserId.value == 0) return;
+    if (currentUserId.value == 0) {
+      SnackbarHelper.showError(
+          title: "Sistem Belum Siap",
+          message:
+              "Data Anda belum termuat sempurna. Silakan muat ulang halaman.");
+      fetchMyProfile();
+      return;
+    }
 
     if (newPasswordC.text.isNotEmpty || oldPasswordC.text.isNotEmpty) {
       if (newPasswordC.text.isEmpty || oldPasswordC.text.isEmpty) {
-        Get.snackbar(
-          "Gagal",
-          "Untuk ganti password, Wajib isi Password Lama dan Baru.",
-          backgroundColor: Colors.orange,
-          colorText: Colors.white,
+        SnackbarHelper.showError(
+          title: "Validasi Gagal",
+          message:
+              "Untuk mengganti kata sandi, WAJIB mengisi Password Lama dan Password Baru.",
+        );
+        return;
+      }
+      if (oldPasswordC.text == newPasswordC.text) {
+        SnackbarHelper.showError(
+          title: "Password Sama",
+          message: "password baru tidak boleh sama dengan password lama Anda!",
+        );
+        return;
+      }
+
+      String pattern =
+          r'^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$';
+      RegExp regex = RegExp(pattern);
+
+      if (!regex.hasMatch(newPasswordC.text)) {
+        SnackbarHelper.showError(
+          title: "Password Terlalu Lemah",
+          message:
+              "Password minimal 8 karakter, wajib mengandung huruf, angka, dan simbol.",
         );
         return;
       }
@@ -294,12 +365,19 @@ class RadiologController extends GetxController {
     try {
       isLoading.value = true;
       String? token = getToken();
+      if (token == null) {
+        return;
+      }
+
       Map<String, dynamic> bodyData = {
         "username": myUsernameC.text,
         "full_name": myFullNameC.text,
         "role": displayRole.value,
-        "avatar": profileImageUrl.value,
       };
+
+      if (profileImageUrl.value.isNotEmpty) {
+        bodyData["avatar"] = profileImageUrl.value;
+      }
 
       if (newPasswordC.text.isNotEmpty) {
         bodyData["password"] = newPasswordC.text;
@@ -313,17 +391,34 @@ class RadiologController extends GetxController {
           },
           body: json.encode(bodyData));
 
-      if (response.statusCode == 200) {
-        Get.snackbar("Sukses", "Profil berhasil diperbarui",
-            backgroundColor: Colors.green, colorText: Colors.white);
+      // 3. TANGANI RESPON API DENGAN POP-UP KITA
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // 👇 INI YANG KAMU TUNGGU-TUNGGU: POPUP SUKSES 👇
+        SnackbarHelper.showSuccess(
+          title: "Profil Tersimpan",
+          message: "Data profil atau kata sandi Anda berhasil diperbarui.",
+        );
         fetchMyProfile();
         clearProfileForm();
+      } else if (response.statusCode == 422) {
+        debugPrint("Alasan Error 422 dari Backend: ${response.body}");
+        SnackbarHelper.showError(
+          title: "Gagal Disimpan",
+          message: "Data ditolak oleh server. Pastikan isian Anda sudah benar.",
+        );
       } else {
-        Get.snackbar("Gagal", "Gagal update profil: ${response.body}",
-            backgroundColor: Colors.red, colorText: Colors.white);
+        SnackbarHelper.showError(
+          title: "Gagal Terhubung",
+          message:
+              "Terjadi kesalahan server dengan status: ${response.statusCode}",
+        );
       }
     } catch (e) {
-      debugPrint("Error: $e");
+      debugPrint("Error saat saveProfile: $e");
+      SnackbarHelper.showError(
+          title: "Koneksi Terputus",
+          message:
+              "Gagal terhubung ke server. Periksa jaringan internet Anda.");
     } finally {
       isLoading.value = false;
     }
@@ -333,6 +428,7 @@ class RadiologController extends GetxController {
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
     if (image != null) {
+      final currentContext = Get.overlayContext;
       try {
         String? token = getToken();
         var request = http.MultipartRequest(
@@ -342,21 +438,43 @@ class RadiologController extends GetxController {
             'file', await image.readAsBytes(),
             filename: image.name));
 
-        Get.dialog(const Center(child: CircularProgressIndicator()),
-            barrierDismissible: false);
+        if (currentContext != null) {
+          showDialog(
+            context: currentContext,
+            barrierDismissible: false,
+            builder: (context) =>
+                const Center(child: CircularProgressIndicator()),
+          );
+        }
         var response = await http.Response.fromStream(await request.send());
-        Get.back();
+
+        if (currentContext != null) {
+          Navigator.of(currentContext, rootNavigator: true).pop();
+        }
+
+        await Future.delayed(const Duration(milliseconds: 300));
 
         if (response.statusCode == 200) {
           var data = jsonDecode(response.body);
           if (data['url'] != null) profileImageUrl.value = data['url'];
-          Get.snackbar("Sukses", "Foto profil diperbarui",
-              backgroundColor: Colors.green, colorText: Colors.white);
+
+          SnackbarHelper.showSuccess(
+            title: "Profil Diperbarui",
+            message: "Foto profil Anda berhasil diperbarui.",
+          );
         }
       } catch (e) {
-        Get.back();
+        if (currentContext != null) {
+          Navigator.of(currentContext, rootNavigator: true).pop();
+        }
         debugPrint("Error: $e");
-        Get.snackbar("Gagal", "Gagal upload avatar");
+        await Future.delayed(const Duration(milliseconds: 300));
+
+        SnackbarHelper.showError(
+          title: "Gagal Mengunggah",
+          message:
+              "Pastikan ukuran gambar tidak terlalu besar atau periksa koneksi Anda.",
+        );
       }
     }
   }
@@ -416,9 +534,30 @@ class RadiologController extends GetxController {
     }
   }
 
+  Future<void> fetchNotifications() async {
+    try {
+      String? token = getToken();
+      if (token == null) return;
+
+      var response = await http.get(
+          Uri.parse('${ApiConfig.baseUrl}/notifications/'),
+          headers: {'Authorization': 'Bearer $token'});
+
+      if (response.statusCode == 200) {
+        List data = jsonDecode(response.body);
+        notificationsList.value = data;
+
+        unreadNotifCount.value =
+            data.where((n) => n['is_read'] == false).length;
+      }
+    } catch (e) {
+      debugPrint("Error fetch notif: $e");
+    }
+  }
+
   Future<void> pickMRIFile() async {
-    FilePickerResult? result = await FilePicker.platform
-        .pickFiles(type: FileType.image, allowMultiple: false);
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom, allowedExtensions: ['zip'], withData: true);
     if (result != null) {
       selectedFile.value = result.files.first;
       selectedFileName.value = result.files.first.name;
@@ -427,8 +566,10 @@ class RadiologController extends GetxController {
 
   Future<void> uploadAndAnalyze() async {
     if (selectedFile.value == null) {
-      Get.snackbar("Error", "File MRI belum dipilih!",
-          backgroundColor: Colors.red, colorText: Colors.white);
+      SnackbarHelper.showError(
+        title: "File Kosong",
+        message: "Harap pilih file zip hasil scan MRI terlebih dahulu!",
+      );
       return;
     }
 
@@ -443,8 +584,10 @@ class RadiologController extends GetxController {
       request.fields['id_pasien'] = idRmC.text;
       request.fields['tgl_lahir'] = tglLahirC.text;
       request.fields['status'] = selectedStatus.value;
-      request.fields['jenis_mri'] = selectedJenisMRI.value;
-      request.fields['catatan'] = catatanC.text.isEmpty ? "-" : catatanC.text;
+      request.fields['jenis_mri'] = 'MRI Otak (4 Modalitas ZIP)';
+      request.fields['catatan'] = catatanC.text.isEmpty
+          ? "Radiolog tidak menambahkan catatan"
+          : catatanC.text;
 
       if (selectedFile.value!.bytes != null) {
         request.files.add(http.MultipartFile.fromBytes(
@@ -459,23 +602,31 @@ class RadiologController extends GetxController {
       var response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200) {
-        var data = jsonDecode(response.body);
-        Get.defaultDialog(
-            title: "Analisis Selesai",
-            middleText: "Hasil Prediksi: ${data['hasil_ai']}",
-            textConfirm: "OK",
-            confirmTextColor: Colors.white,
+        SnackbarHelper.showSuccessDialog(
+            title: "MRI Berhasil Dikirim",
+            description:
+                "File MRI sedang diproses oleh AI. Mohon tunggu beberapa saat untuk hasil analisis.",
             onConfirm: () {
-              Get.back();
+              if (dashboardSummary.containsKey('total_menunggu')) {
+                dashboardSummary['total_menunggu'] =
+                    (dashboardSummary['total_menunggu'] ?? 0) + 1;
+                dashboardSummary.refresh();
+              }
               fetchRiwayat();
-              fetchDashboardSummary();
+              clearUploadForm();
               patientViewStep.value = 1;
             });
       } else {
-        Get.snackbar("Gagal", "Error: ${response.body}");
+        SnackbarHelper.showError(
+          title: "Upload Gagal",
+          message: "Sistem menolak file Anda: ${response.body}",
+        );
       }
     } catch (e) {
-      Get.snackbar("Error", "Gagal koneksi server");
+      SnackbarHelper.showError(
+        title: "Koneksi Terputus",
+        message: "Gagal terhubung ke server. Periksa koneksi internet Anda.",
+      );
     } finally {
       isLoading.value = false;
     }
@@ -508,12 +659,17 @@ class RadiologController extends GetxController {
         detailAnalysisData.value = data;
         debugPrint("[WEB DEBUG] Data Berhasil Disimpan & Siap Tampil!");
       } else {
-        Get.snackbar("Gagal", "Server Error: ${response.statusCode}");
-        debugPrint("Response Body: ${response.body}");
+        SnackbarHelper.showError(
+          title: "Gagal Memuat Analisis",
+          message: "Server mengembalikan status: ${response.statusCode}",
+        );
       }
     } catch (e) {
       debugPrint("Error: $e");
-      Get.snackbar("Error", "Gagal koneksi ke server");
+      SnackbarHelper.showError(
+        title: "Koneksi Terputus",
+        message: "Gagal menarik data analisis dari server.",
+      );
     } finally {
       isLoadingDetail.value = false;
     }
@@ -521,6 +677,7 @@ class RadiologController extends GetxController {
 
   Future<void> logout() async {
     try {
+      _pollingTimer?.cancel();
       String? token = getToken();
 
       if (token != null) {

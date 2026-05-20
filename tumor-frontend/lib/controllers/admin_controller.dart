@@ -6,6 +6,7 @@ import 'package:get_storage/get_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:calendar_date_picker2/calendar_date_picker2.dart';
 import 'package:axon_vision/pages/global_widgets/text_fonts/poppins_text_view.dart';
+import 'package:axon_vision/helpers/snackbar.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:axon_vision/pages/login/login_page.dart';
 import 'package:axon_vision/models/user_model.dart';
@@ -249,11 +250,24 @@ class AdminController extends GetxController {
     if (usernameC.text.isEmpty ||
         newPasswordC.text.isEmpty ||
         fullNameC.text.isEmpty) {
-      Get.snackbar(
-        "Peringatan",
-        "Semua data wajib diisi",
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
+      SnackbarHelper.showError(
+        title: "Peringatan",
+        message:
+            "Semua isian (Username, Nama, dan Password) wajib diisi untuk membuat user baru.",
+      );
+      return;
+    }
+
+    // RegEx Level Dewa
+    String pattern =
+        r'^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$';
+    RegExp regex = RegExp(pattern);
+
+    if (!regex.hasMatch(newPasswordC.text)) {
+      SnackbarHelper.showError(
+        title: "Password Terlalu Lemah",
+        message:
+            "Password minimal 8 karakter, wajib mengandung huruf, angka, dan simbol.",
       );
       return;
     }
@@ -278,46 +292,62 @@ class AdminController extends GetxController {
         body: body,
       );
 
-      if (response.statusCode == 200) {
-        Get.back();
-        Get.snackbar(
-          "Sukses",
-          "User berhasil ditambahkan",
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-        );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        Get.back(); // Tutup modal/dialog tambah user
+        SnackbarHelper.showSuccess(
+            title: "Sukses",
+            message: "Akun ${fullNameC.text} berhasil dibuat.");
         _clearForm();
         fetchUsers();
       } else {
         var err = json.decode(response.body);
-        Get.snackbar(
-          "Gagal",
-          err['detail'] ?? "Gagal menyimpan (Code ${response.statusCode})",
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
+        SnackbarHelper.showError(
+          title: "Gagal Menambahkan",
+          message: err['detail'] ??
+              "Gagal menyimpan ke server (Code ${response.statusCode})",
         );
-        debugPrint("Add User Error: ${response.body}");
       }
     } catch (e) {
-      Get.snackbar(
-        "Error",
-        "Koneksi gagal: $e",
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
+      SnackbarHelper.showError(
+        title: "Error Jaringan",
+        message: "Gagal menyambung ke server: $e",
       );
     }
   }
 
   /// [UPDATE] UPDATE USER
-  Future<void> updateUser(int userId) async {
-    // Validasi Password
+  /// [UPDATE] UPDATE USER
+  Future<void> updateUser(int userId,
+      {bool isUpdatingOwnProfile = false}) async {
+    // Validasi Password Keamanan Tinggi
     if (newPasswordC.text.isNotEmpty || oldPasswordC.text.isNotEmpty) {
       if (newPasswordC.text.isEmpty || oldPasswordC.text.isEmpty) {
-        Get.snackbar(
-          "Gagal",
-          "Untuk ganti password, Wajib isi Password Lama dan Baru.",
-          backgroundColor: Colors.orange,
-          colorText: Colors.white,
+        SnackbarHelper.showError(
+          title: "Validasi Gagal",
+          message:
+              "Untuk mengganti kata sandi, Anda WAJIB mengisi Password Lama dan Baru.",
+        );
+        return;
+      }
+
+      if (oldPasswordC.text == newPasswordC.text) {
+        SnackbarHelper.showError(
+          title: "Password Sama",
+          message: "Password baru tidak boleh sama dengan password yang lama.",
+        );
+        return;
+      }
+
+      // RegEx Level Dewa
+      String pattern =
+          r'^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$';
+      RegExp regex = RegExp(pattern);
+
+      if (!regex.hasMatch(newPasswordC.text)) {
+        SnackbarHelper.showError(
+          title: "Password Terlalu Lemah",
+          message:
+              "Password minimal 8 karakter, wajib mengandung huruf, angka, dan simbol.",
         );
         return;
       }
@@ -327,14 +357,25 @@ class AdminController extends GetxController {
       String? token = getToken();
       if (token == null) return;
 
+      // 👇 PERBAIKAN BUG PAYLOAD DI SINI 👇
       Map<String, dynamic> data = {
         "username": usernameC.text,
         "full_name": fullNameC.text,
         "role": selectedRole.value,
-        "is_active": selectedStatus.value,
-        "password": newPasswordC.text,
-        "avatar": profileImageUrl.value,
+        "is_active": selectedStatus
+            .value, // Pastikan ini terkirim sebagai boolean (true/false)
       };
+
+      // Jangan kirim password kalau kosong (biar backend tidak error)
+      if (newPasswordC.text.isNotEmpty) {
+        data["password"] = newPasswordC.text;
+      }
+
+      // INI OBAT ANTI-KLONING FOTO PROFIL:
+      // Hanya kirim/timpa avatar JIKA admin sedang edit profilnya SENDIRI!
+      if (isUpdatingOwnProfile && profileImageUrl.value.isNotEmpty) {
+        data["avatar"] = profileImageUrl.value;
+      }
 
       var response = await http.put(
         Uri.parse('${ApiConfig.baseUrl}/users/$userId'),
@@ -345,34 +386,31 @@ class AdminController extends GetxController {
         body: json.encode(data),
       );
 
-      if (response.statusCode == 200) {
-        Get.back();
-        Get.snackbar(
-          "Sukses",
-          "Data diperbarui",
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // Jika sedang edit user lain dari tabel, tutup dialog modalnya
+        if (!isUpdatingOwnProfile) Get.back();
+
+        SnackbarHelper.showSuccessDialog(
+          title: "Sukses Tersimpan",
+          description: "Data profil telah berhasil diperbarui di dalam sistem.",
+          onConfirm: () {}, // Kosongkan
         );
 
         oldPasswordC.clear();
         newPasswordC.clear();
         fetchUsers();
-        fetchMyProfile();
+        if (isUpdatingOwnProfile) fetchMyProfile();
       } else {
-        Get.snackbar(
-          "Gagal",
-          "Update gagal (Code ${response.statusCode})",
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
+        SnackbarHelper.showError(
+          title: "Gagal Menyimpan",
+          message:
+              "Update gagal ditolak oleh server (Code ${response.statusCode})",
         );
-        debugPrint("Update Error: ${response.body}");
       }
     } catch (e) {
-      Get.snackbar(
-        "Error",
-        "Koneksi gagal",
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
+      SnackbarHelper.showError(
+        title: "Koneksi Terputus",
+        message: "Gagal terhubung dengan server.",
       );
     }
   }
@@ -389,29 +427,21 @@ class AdminController extends GetxController {
       );
 
       if (response.statusCode == 200) {
-        Get.back();
-        Get.snackbar(
-          "Info",
-          "User dihapus",
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-        );
+        Get.back(); // Jika dia dalam dialog
+        SnackbarHelper.showSuccess(
+            title: "User Dihapus",
+            message: "Data user berhasil dihapus dari sistem.");
         fetchUsers();
       } else {
-        Get.snackbar(
-          "Gagal",
-          "Gagal hapus data (Code ${response.statusCode})",
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-        );
+        SnackbarHelper.showError(
+            title: "Gagal Menghapus",
+            message:
+                "Tidak dapat menghapus data ini (Code ${response.statusCode})");
       }
     } catch (e) {
-      Get.snackbar(
-        "Error",
-        "Koneksi gagal",
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      SnackbarHelper.showError(
+          title: "Koneksi Gagal",
+          message: "Terjadi masalah saat mencoba menghubungi server.");
     }
   }
 
@@ -442,7 +472,9 @@ class AdminController extends GetxController {
   // Tambah Pasien (CREATE)
   Future<void> addPatient() async {
     if (namaPasienC.text.isEmpty || idRmC.text.isEmpty) {
-      Get.snackbar("Error", "Nama dan ID RM wajib diisi");
+      SnackbarHelper.showError(
+          title: "Data Belum Lengkap",
+          message: "Nama Pasien dan ID Rekam Medis (RM) wajib diisi!");
       return;
     }
 
@@ -466,21 +498,20 @@ class AdminController extends GetxController {
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        Get.back();
-        Get.snackbar(
-          "Sukses",
-          "Pasien berhasil ditambahkan",
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-        );
+        Get.back(); // Tutup form modal
+        SnackbarHelper.showSuccess(
+            title: "Sukses", message: "Data Pasien berhasil ditambahkan.");
         clearPatientForm();
         fetchPatients();
       } else {
-        debugPrint("Gagal: ${response.body}");
-        Get.snackbar("Gagal", "Error: ${response.statusCode}");
+        SnackbarHelper.showError(
+            title: "Gagal Menyimpan",
+            message:
+                "Gagal mendaftarkan pasien (Code: ${response.statusCode})");
       }
     } catch (e) {
-      debugPrint("Error tambah pasien: $e");
+      SnackbarHelper.showError(
+          title: "Error Jaringan", message: "Koneksi ke server terputus.");
     }
   }
 
@@ -505,19 +536,21 @@ class AdminController extends GetxController {
         body: body,
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         Get.back();
-        Get.snackbar(
-          "Sukses",
-          "Data pasien diperbarui",
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-        );
+        SnackbarHelper.showSuccess(
+            title: "Pasien Diperbarui",
+            message: "Perubahan data pasien telah berhasil disimpan.");
         clearPatientForm();
         fetchPatients();
+      } else {
+        SnackbarHelper.showError(
+            title: "Gagal Update",
+            message: "Sistem menolak update data pasien ini.");
       }
     } catch (e) {
-      debugPrint("Error update pasie: $e");
+      SnackbarHelper.showError(
+          title: "Error", message: "Jaringan sedang bermasalah.");
     }
   }
 
@@ -622,7 +655,10 @@ class AdminController extends GetxController {
   // Simpan Perubahan
   Future<void> saveProfile() async {
     if (currentUserId.value == 0) {
-      Get.snackbar("Error", "Gagal memuat data user.");
+      SnackbarHelper.showError(
+        title: "Error",
+        message: "Gagal memuat ID Admin. Silakan muat ulang halaman.",
+      );
       return;
     }
     await updateUser(currentUserId.value);
@@ -639,6 +675,7 @@ class AdminController extends GetxController {
   }
 
   Future<void> _uploadAvatar(XFile image) async {
+    final currentContext = Get.overlayContext;
     try {
       String? token = getToken();
       if (token == null) return;
@@ -658,15 +695,27 @@ class AdminController extends GetxController {
         ),
       );
 
-      Get.dialog(const Center(child: CircularProgressIndicator()),
-          barrierDismissible: false);
+      // Loading Indicator
+      if (currentContext != null) {
+        showDialog(
+          context: currentContext,
+          barrierDismissible: false,
+          builder: (context) => const Center(
+              child: CircularProgressIndicator(color: Colors.white)),
+        );
+      }
 
       var streamedResponse = await request.send();
       var response = await http.Response.fromStream(streamedResponse);
 
-      Get.back();
+      // Tutup Loading Indicator
+      if (currentContext != null) {
+        Navigator.of(currentContext, rootNavigator: true).pop();
+      }
 
-      if (response.statusCode == 200) {
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
         var data = json.decode(response.body);
 
         if (data['url'] != null) {
@@ -675,15 +724,23 @@ class AdminController extends GetxController {
           profileImageUrl.value = data['avatar_url'];
         }
 
-        Get.snackbar("Sukses", "Foto profil diperbarui",
-            backgroundColor: Colors.green, colorText: Colors.white);
+        SnackbarHelper.showSuccess(
+            title: "Foto Berhasil Diunggah",
+            message: "Foto profil admin berhasil diganti.");
       } else {
-        Get.snackbar("Gagal", "Upload gagal",
-            backgroundColor: Colors.red, colorText: Colors.white);
+        SnackbarHelper.showError(
+            title: "Upload Ditolak",
+            message:
+                "Server tidak bisa memproses gambar Anda (Code: ${response.statusCode})");
       }
     } catch (e) {
-      Get.back();
-      Get.snackbar("Error", "Koneksi gagal: $e");
+      if (currentContext != null) {
+        Navigator.of(currentContext, rootNavigator: true).pop();
+      }
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      SnackbarHelper.showError(
+          title: "Koneksi Terputus", message: "Gagal mengirimkan foto profil.");
     }
   }
 

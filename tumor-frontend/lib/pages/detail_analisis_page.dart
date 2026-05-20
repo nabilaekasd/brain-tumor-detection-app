@@ -1,14 +1,14 @@
+import 'dart:async';
 import 'package:axon_vision/controllers/radiolog_controller.dart';
 import 'package:axon_vision/controllers/dokter_controller.dart';
 import 'package:axon_vision/utils/api_config.dart';
-import 'package:axon_vision/pages/global_widgets/custom/custom_flat_button.dart';
-import 'package:axon_vision/pages/global_widgets/custom/custom_text_field.dart';
 import 'package:axon_vision/pages/global_widgets/text_fonts/poppins_text_view.dart';
 import 'package:axon_vision/utils/app_colors.dart';
-import 'package:axon_vision/utils/size_config.dart';
-import 'package:axon_vision/utils/space_sizer.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:webview_flutter/webview_flutter.dart';
+import 'package:flutter/foundation.dart';
+import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 class DetailAnalisisPage extends StatefulWidget {
   final String analysisId;
@@ -37,7 +37,19 @@ class _DetailAnalisisPageState extends State<DetailAnalisisPage> {
       TransformationController();
   final TextEditingController doctorNotesController = TextEditingController();
 
-  String viewMode = '2D';
+  // --- STATE UNTUK 2D DYNAMIC SLICES ---
+  int _axis2D = 2; // 0: Sagittal, 1: Coronal, 2: Axial
+  String _label2D = "all"; // all, netc, snfh, et, rc
+
+  double _sliceIdx = 75; // Untuk pergerakan mulus UI Slider
+  double _fetchSliceIdx = 75; // Untuk trigger pemanggilan API
+  int _maxSlice = 155;
+  Timer? _debounceTimer; // Timer untuk slider real-time
+
+  // --- STATE UNTUK 3D ---
+  String _label3D = "all"; // all, netc, snfh, et, rc
+  bool _showBrain3D = true;
+
   int _quarterTurns = 0;
   bool _isInverted = false;
 
@@ -49,19 +61,47 @@ class _DetailAnalisisPageState extends State<DetailAnalisisPage> {
     if (currentCtrl.detailAnalysisData.isEmpty ||
         currentCtrl.detailAnalysisData['id'].toString() != widget.analysisId) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        currentCtrl.fetchAnalysisDetail(widget.analysisId);
+        currentCtrl.fetchAnalysisDetail(widget.analysisId).then((_) {
+          _setupInitialSlices(currentCtrl.detailAnalysisData);
+        });
+      });
+    } else {
+      _setupInitialSlices(currentCtrl.detailAnalysisData);
+    }
+  }
+
+  void _setupInitialSlices(Map data) {
+    if (data.containsKey('shape')) {
+      List shape = data['shape'];
+      setState(() {
+        _maxSlice = shape[_axis2D] - 1;
+        _sliceIdx = _maxSlice / 2;
+        _fetchSliceIdx = _sliceIdx;
+      });
+    }
+  }
+
+  void _onAxisChanged(int? newAxis) {
+    if (newAxis != null) {
+      final data = activeController.detailAnalysisData;
+      List shape = data['shape'] ?? [155, 240, 240];
+      setState(() {
+        _axis2D = newAxis;
+        _maxSlice = shape[_axis2D] - 1;
+        _sliceIdx = _maxSlice / 2;
+        _fetchSliceIdx = _sliceIdx; // Reset target fetch
       });
     }
   }
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _transformationController.dispose();
     doctorNotesController.dispose();
     super.dispose();
   }
 
-  // --- LOGIKA GAMBAR ---
   void _zoomIn() =>
       _transformationController.value *= Matrix4.diagonal3Values(1.2, 1.2, 1.0);
   void _zoomOut() =>
@@ -75,6 +115,23 @@ class _DetailAnalisisPageState extends State<DetailAnalisisPage> {
       _quarterTurns = 0;
       _isInverted = false;
     });
+  }
+
+  // --- URL GENERATOR ---
+  String _getDynamic2DUrl() {
+    return "${ApiConfig.baseUrl}/analisis/${widget.analysisId}/slice?axis=$_axis2D&idx=${_fetchSliceIdx.toInt()}&label=$_label2D&t=${DateTime.now().millisecondsSinceEpoch}";
+  }
+
+  String _getDynamic3DUrl(Map data) {
+    Map paths = data['paths_3d'] ?? {};
+    String key = _showBrain3D ? _label3D : "${_label3D}_nobrain";
+    String rawPath = paths[key] ?? "";
+    if (rawPath.isEmpty) {
+      rawPath = paths['all'] ?? "";
+    }
+    String filename = rawPath.split('/').last;
+    return Uri.encodeFull(
+        "${ApiConfig.baseUrl}/get-image/$filename?t=${DateTime.now().millisecondsSinceEpoch}");
   }
 
   void _openFullscreen(String imageUrl) {
@@ -92,6 +149,19 @@ class _DetailAnalisisPageState extends State<DetailAnalisisPage> {
             child: _buildImageContent(imageUrl, BoxFit.contain),
           ),
         ),
+      ),
+      barrierColor: Colors.black,
+    );
+  }
+
+  void _openFullscreen3D(String url) {
+    Get.dialog(
+      Scaffold(
+        backgroundColor: Colors.black,
+        appBar: AppBar(
+            backgroundColor: Colors.black,
+            iconTheme: const IconThemeData(color: Colors.white)),
+        body: Center(child: WebView3DWidget(url: url)),
       ),
       barrierColor: Colors.black,
     );
@@ -124,9 +194,9 @@ class _DetailAnalisisPageState extends State<DetailAnalisisPage> {
                 1,
                 0,
               ]),
-              child: Image.network(url, fit: fit),
+              child: Image.network(url, fit: fit, key: ValueKey(url)),
             )
-          : Image.network(url, fit: fit),
+          : Image.network(url, fit: fit, key: ValueKey(url)),
     );
   }
 
@@ -136,12 +206,14 @@ class _DetailAnalisisPageState extends State<DetailAnalisisPage> {
     final currentCtrl = activeController;
 
     return Material(
-      color: Colors.transparent,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-        child: Column(
-          children: [
-            Expanded(
+        color: Colors.transparent,
+        child: LayoutBuilder(builder: (context, constraints) {
+          bool isMobile = constraints.maxWidth < 750;
+          double availableHeight = constraints.maxHeight - 32;
+
+          return Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 24.0, vertical: 4.0),
               child: Obx(() {
                 if (currentCtrl.isLoadingDetail.value) {
                   return const Center(child: CircularProgressIndicator());
@@ -149,471 +221,852 @@ class _DetailAnalisisPageState extends State<DetailAnalisisPage> {
 
                 final data = currentCtrl.detailAnalysisData;
                 if (data.isEmpty) {
-                  return Center(
+                  return const Center(
                       child: PoppinsTextView(
-                          value: "Data tidak tersedia", color: AppColors.grey));
+                          value: "Data tidak tersedia", color: Colors.grey));
                 }
 
-                String fullPath = data['image_url'].toString();
-                String filename = fullPath.split('/').last;
-                String rawUrl = "${ApiConfig.baseUrl}/get-image/$filename";
-                String imageUrl = Uri.encodeFull(rawUrl);
-
                 if (data['notes_dokter'] != null &&
-                    doctorNotesController.text.isEmpty) {
+                    doctorNotesController.text.isEmpty &&
+                    data['notes_dokter'] != "-") {
                   doctorNotesController.text = data['notes_dokter'];
                 }
 
-                String resString = data['result'].toString().toLowerCase();
-                bool isCancer = (resString.contains("cancer") ||
-                        resString.contains("tumor") ||
-                        resString.contains("malignant") ||
-                        resString.contains("glioma")) &&
-                    !resString.contains("non");
-
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // === KIRI: IMAGE VIEWER (60%) ===
-                    Expanded(
-                      flex: 6,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.black,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppColors.greyDisabled),
-                          boxShadow: [
-                            BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.1),
-                                blurRadius: 15,
-                                offset: const Offset(0, 8))
-                          ],
-                        ),
-                        clipBehavior: Clip.hardEdge,
-                        child: Stack(
-                          children: [
-                            Center(
-                              child: viewMode == '2D'
-                                  ? InteractiveViewer(
-                                      transformationController:
-                                          _transformationController,
-                                      minScale: 0.1,
-                                      maxScale: 5.0,
-                                      child: _buildImageContent(
-                                          imageUrl, BoxFit.contain),
-                                    )
-                                  : Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        const Icon(Icons.view_in_ar,
-                                            size: 60, color: Colors.white24),
-                                        const SizedBox(height: 16),
-                                        PoppinsTextView(
-                                            value:
-                                                "Visualisasi 3D Belum Tersedia",
-                                            color: Colors.white54,
-                                            size: 16)
-                                      ],
-                                    ),
+                Widget imageViewer = Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(11),
+                    child: DefaultTabController(
+                      length: 2,
+                      child: Column(
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              border: Border(
+                                  bottom:
+                                      BorderSide(color: Colors.grey.shade200)),
                             ),
-                            // Label Mode
-                            Positioned(
-                              top: 20,
-                              left: 20,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 6),
+                            child: TabBar(
+                              indicatorColor: AppColors.blueDark,
+                              indicatorWeight: 3,
+                              labelColor: AppColors.blueDark,
+                              labelStyle: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: 'Poppins',
+                                  fontSize: 12),
+                              unselectedLabelColor: Colors.grey,
+                              tabs: const [
+                                Tab(
+                                    icon: Icon(Icons.image_outlined, size: 18),
+                                    text: 'Interactive 2D Slices'),
+                                Tab(
+                                    icon: Icon(Icons.view_in_ar_rounded,
+                                        size: 18),
+                                    text: '3D Volume Render'),
+                              ],
+                            ),
+                          ),
+                          Expanded(
+                            child: TabBarView(
+                              physics: const NeverScrollableScrollPhysics(),
+                              children: [
+                                // --- TAB 1: 2D SLICES ---
+                                Column(
+                                  children: [
+                                    Expanded(
+                                      child: Container(
+                                        color: Colors.black,
+                                        width: double.infinity,
+                                        child: Stack(
+                                          children: [
+                                            Positioned.fill(
+                                              child: InteractiveViewer(
+                                                transformationController:
+                                                    _transformationController,
+                                                minScale: 0.1,
+                                                maxScale: 5.0,
+                                                child: _buildImageContent(
+                                                    _getDynamic2DUrl(),
+                                                    BoxFit.contain),
+                                              ),
+                                            ),
+                                            Positioned(
+                                              bottom: 16,
+                                              right: 16,
+                                              child: InkWell(
+                                                onTap: () => _openFullscreen(
+                                                    _getDynamic2DUrl()),
+                                                child: Container(
+                                                  padding:
+                                                      const EdgeInsets.all(8),
+                                                  decoration: BoxDecoration(
+                                                      color: Colors.black54,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              6)),
+                                                  child: const Icon(
+                                                      Icons.fullscreen,
+                                                      color: Colors.white,
+                                                      size: 20),
+                                                ),
+                                              ),
+                                            ),
+                                            Positioned(
+                                              bottom: 16,
+                                              left: 0,
+                                              right: 0,
+                                              child: Center(
+                                                child: Container(
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                      horizontal: 12,
+                                                      vertical: 6),
+                                                  decoration: BoxDecoration(
+                                                      color: Colors.black
+                                                          .withValues(
+                                                              alpha: 0.7),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              50)),
+                                                  child: Row(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      _buildToolIcon(
+                                                          Icons.zoom_in,
+                                                          onTap: _zoomIn),
+                                                      const SizedBox(width: 8),
+                                                      _buildToolIcon(
+                                                          Icons.zoom_out,
+                                                          onTap: _zoomOut),
+                                                      const SizedBox(width: 8),
+                                                      _buildToolIcon(
+                                                          Icons.rotate_right,
+                                                          onTap: _rotateImage),
+                                                      const SizedBox(width: 8),
+                                                      _buildToolIcon(
+                                                          Icons.contrast,
+                                                          onTap:
+                                                              _toggleContrast),
+                                                      const SizedBox(width: 8),
+                                                      _buildToolIcon(
+                                                          Icons.refresh,
+                                                          onTap: _resetView),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    Container(
+                                      // 👇 Padding atas kita perbesar jadi 16 biar bisa bernapas!
+                                      padding: const EdgeInsets.only(
+                                          top: 16,
+                                          bottom: 12,
+                                          left: 16,
+                                          right: 16),
+                                      color: Colors.white,
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: _buildDropdown(
+                                                  label: "Sudut Pandang (Axis)",
+                                                  value: _axis2D,
+                                                  items: const [
+                                                    DropdownMenuItem(
+                                                        value: 0,
+                                                        child: PoppinsTextView(
+                                                            value: "Sagittal",
+                                                            size: 11,
+                                                            color:
+                                                                Colors.black87,
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .w500)),
+                                                    DropdownMenuItem(
+                                                        value: 1,
+                                                        child: PoppinsTextView(
+                                                            value: "Coronal",
+                                                            size: 11,
+                                                            color:
+                                                                Colors.black87,
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .w500)),
+                                                    DropdownMenuItem(
+                                                        value: 2,
+                                                        child: PoppinsTextView(
+                                                            value: "Axial",
+                                                            size: 11,
+                                                            color:
+                                                                Colors.black87,
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .w500)),
+                                                  ],
+                                                  onChanged: (val) =>
+                                                      _onAxisChanged(
+                                                          val as int?),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 16),
+                                              Expanded(
+                                                child: _buildDropdown(
+                                                  label: "Tampilkan Mask",
+                                                  value: _label2D,
+                                                  items: const [
+                                                    DropdownMenuItem(
+                                                        value: "all",
+                                                        child: PoppinsTextView(
+                                                            value: "Semua",
+                                                            size: 11,
+                                                            color:
+                                                                Colors.black87,
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .w500)),
+                                                    DropdownMenuItem(
+                                                        value: "netc",
+                                                        child: PoppinsTextView(
+                                                            value:
+                                                                "NETC (Merah)",
+                                                            size: 11,
+                                                            color:
+                                                                Colors.black87,
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .w500)),
+                                                    DropdownMenuItem(
+                                                        value: "snfh",
+                                                        child: PoppinsTextView(
+                                                            value:
+                                                                "SNFH (Biru)",
+                                                            size: 11,
+                                                            color:
+                                                                Colors.black87,
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .w500)),
+                                                    DropdownMenuItem(
+                                                        value: "et",
+                                                        child: PoppinsTextView(
+                                                            value: "ET (Hijau)",
+                                                            size: 11,
+                                                            color:
+                                                                Colors.black87,
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .w500)),
+                                                    DropdownMenuItem(
+                                                        value: "rc",
+                                                        child: PoppinsTextView(
+                                                            value: "RC (Ungu)",
+                                                            size: 11,
+                                                            color:
+                                                                Colors.black87,
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .w500)),
+                                                  ],
+                                                  onChanged: (val) {
+                                                    setState(() {
+                                                      _label2D = val.toString();
+                                                      _fetchSliceIdx =
+                                                          _sliceIdx;
+                                                    });
+                                                  },
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(
+                                              height:
+                                                  12), // Jarak antara dropdown & slider
+                                          Row(
+                                            children: [
+                                              const PoppinsTextView(
+                                                  value: "Slice: ",
+                                                  size: 12,
+                                                  fontWeight: FontWeight.bold),
+                                              Text("${_sliceIdx.toInt()}",
+                                                  style: const TextStyle(
+                                                      fontFamily: 'Poppins',
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize: 12,
+                                                      color: Colors.blue)),
+                                              Expanded(
+                                                child: Slider(
+                                                  value: _sliceIdx,
+                                                  min: 0,
+                                                  max: _maxSlice.toDouble(),
+                                                  divisions: _maxSlice > 0
+                                                      ? _maxSlice
+                                                      : 1,
+                                                  activeColor:
+                                                      AppColors.blueDark,
+                                                  onChanged: (val) {
+                                                    setState(() {
+                                                      _sliceIdx = val;
+                                                    });
+                                                    if (_debounceTimer
+                                                            ?.isActive ??
+                                                        false) {
+                                                      _debounceTimer!.cancel();
+                                                    }
+                                                    _debounceTimer = Timer(
+                                                        const Duration(
+                                                            milliseconds: 150),
+                                                        () {
+                                                      setState(() {
+                                                        _fetchSliceIdx = val;
+                                                      });
+                                                    });
+                                                  },
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                  ],
+                                ),
+
+                                // --- TAB 2: 3D VOLUME ---
+                                Column(
+                                  children: [
+                                    Expanded(
+                                      child: Container(
+                                        color: Colors.black,
+                                        width: double.infinity,
+                                        child: Stack(
+                                          children: [
+                                            ClipRRect(
+                                              borderRadius:
+                                                  const BorderRadius.vertical(
+                                                      bottom:
+                                                          Radius.circular(11)),
+                                              child: WebView3DWidget(
+                                                  url: _getDynamic3DUrl(data),
+                                                  key: ValueKey(
+                                                      "${_label3D}_${_showBrain3D}_${data['id']}")),
+                                            ),
+                                            Positioned(
+                                              bottom: 16,
+                                              right: 16,
+                                              child: PointerInterceptor(
+                                                child: InkWell(
+                                                  onTap: () =>
+                                                      _openFullscreen3D(
+                                                          _getDynamic3DUrl(
+                                                              data)),
+                                                  child: Container(
+                                                    padding:
+                                                        const EdgeInsets.all(8),
+                                                    decoration: BoxDecoration(
+                                                        color: Colors.black54,
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(6)),
+                                                    child: const Icon(
+                                                        Icons.fullscreen,
+                                                        color: Colors.white,
+                                                        size: 20),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 20, vertical: 14),
+                                      color: Colors.white,
+                                      width: double.infinity,
+                                      // 👇 OBATNYA: Pakai Wrap dengan spaceBetween agar Kiri & Kanan terpisah sejauh mungkin!
+                                      child: Wrap(
+                                        alignment: WrapAlignment.spaceBetween,
+                                        crossAxisAlignment:
+                                            WrapCrossAlignment.center,
+                                        spacing: 16,
+                                        runSpacing: 12,
+                                        children: [
+                                          // --- KUBU KIRI: Toggle Brain ---
+                                          Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              // Bikin icon-nya ada background abu-abunya sedikit biar lebih premium
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.all(6),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.grey.shade100,
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                child: const Icon(
+                                                    Icons.psychology_outlined,
+                                                    size: 18,
+                                                    color: Colors.black54),
+                                              ),
+                                              const SizedBox(width: 10),
+                                              const PoppinsTextView(
+                                                value: "Otak (Brain)",
+                                                size: 12,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.black87,
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Switch(
+                                                value: _showBrain3D,
+                                                activeColor: AppColors.blueDark,
+                                                // Bikin ukuran switch lebih compact
+                                                materialTapTargetSize:
+                                                    MaterialTapTargetSize
+                                                        .shrinkWrap,
+                                                onChanged: (val) {
+                                                  setState(() {
+                                                    _showBrain3D = val;
+                                                  });
+                                                },
+                                              ),
+                                            ],
+                                          ),
+
+                                          // --- KUBU KANAN: Chips Kategori Tumor ---
+                                          Wrap(
+                                            spacing: 8,
+                                            runSpacing: 8,
+                                            children: [
+                                              _build3DChip("Full", "all",
+                                                  AppColors.blueDark),
+                                              _build3DChip("NETC", "netc",
+                                                  const Color(0xffe41a1c)),
+                                              _build3DChip("SNFH", "snfh",
+                                                  const Color(0xff377eb8)),
+                                              _build3DChip("ET", "et",
+                                                  const Color(0xff4daf4a)),
+                                              _build3DChip("RC", "rc",
+                                                  const Color(0xff984ea3)),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+
+                // ==========================================
+                // WIDGET KANAN: PANEL INFO & METRIK
+                // ==========================================
+                Widget infoPanel = Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // --- INFO PASIEN ---
+                              _buildSectionTitle('Informasi Pasien'),
+                              const SizedBox(height: 10),
+                              _buildInfoRow(
+                                  'Nama Pasien', data['nama_pasien'] ?? "-",
+                                  isBold: true),
+                              _buildInfoRow('ID Medis', data['id_rm'] ?? "-"),
+                              _buildInfoRow(
+                                  'Waktu Scan', data['waktu_scan'] ?? "-"),
+
+                              _buildDivider(),
+
+                              // --- TABEL METRIK (DOSEN) ---
+                              if (data['metrics'] != null) ...[
+                                _buildSectionTitle('Evaluasi Metrik AI'),
+                                const SizedBox(height: 8),
+                                Container(
+                                  decoration: BoxDecoration(
+                                      border: Border.all(
+                                          color: Colors.grey.shade300),
+                                      borderRadius: BorderRadius.circular(8)),
+                                  child: Table(
+                                    border: TableBorder.symmetric(
+                                        inside: BorderSide(
+                                            color: Colors.grey.shade200)),
+                                    columnWidths: const {
+                                      0: FlexColumnWidth(2),
+                                      1: FlexColumnWidth(2),
+                                      2: FlexColumnWidth(2)
+                                    },
+                                    children: [
+                                      TableRow(
+                                          decoration: BoxDecoration(
+                                              color: Colors.grey.shade100),
+                                          children: [
+                                            _tableCell("Kelas", isHeader: true),
+                                            _tableCell("Recall",
+                                                isHeader: true),
+                                            _tableCell("Specificity",
+                                                isHeader: true),
+                                          ]),
+                                      ..._buildMetricRows(data['metrics']),
+                                    ],
+                                  ),
+                                ),
+                                _buildDivider(),
+                              ],
+
+                              // --- KETERANGAN WARNA ---
+                              _buildSectionTitle('Keterangan Segmentasi'),
+                              const SizedBox(height: 10),
+                              Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF9FAFB),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border:
+                                        Border.all(color: Colors.grey.shade200),
+                                  ),
+                                  child: Builder(builder: (context) {
+                                    List<dynamic> detectedRegions =
+                                        data['detected_regions'] ??
+                                            [1, 2, 3, 4];
+                                    Map<int, Map<String, dynamic>> legendData =
+                                        {
+                                      1: {
+                                        "label": "Necrotic Tumor Core (NETC)",
+                                        "color": const Color(0xffe41a1c)
+                                      },
+                                      2: {
+                                        "label": "Peritumoral Edema (SNFH)",
+                                        "color": const Color(0xff377eb8)
+                                      },
+                                      3: {
+                                        "label": "Enhancing Tumor (ET)",
+                                        "color": const Color(0xff4daf4a)
+                                      },
+                                      4: {
+                                        "label": "Resection Cavity (RC)",
+                                        "color": const Color(0xff984ea3)
+                                      },
+                                    };
+                                    return Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children:
+                                          detectedRegions.map<Widget>((id) {
+                                        if (legendData.containsKey(id)) {
+                                          return _buildLegendItem(
+                                              legendData[id]!["color"] as Color,
+                                              legendData[id]!["label"]
+                                                  as String);
+                                        }
+                                        return const SizedBox.shrink();
+                                      }).toList(),
+                                    );
+                                  })),
+
+                              _buildDivider(),
+
+                              // --- CATATAN RADIOLOG ---
+                              _buildSectionTitle('Catatan Teknis (Radiolog)'),
+                              const SizedBox(height: 8),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                    color: Colors.white24,
-                                    borderRadius: BorderRadius.circular(6)),
+                                    color: const Color(0xFFF9FAFB),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                        color: Colors.grey.shade200)),
                                 child: PoppinsTextView(
-                                    value: 'Mode: $viewMode',
+                                    value: (data['notes_radiolog'] == null ||
+                                            data['notes_radiolog'] == "" ||
+                                            data['notes_radiolog'] == "-")
+                                        ? "Radiolog tidak menambahkan catatan"
+                                        : data['notes_radiolog'],
+                                    size: 12,
+                                    color: Colors.black54),
+                              ),
+
+                              _buildDivider(),
+
+                              // --- CATATAN DOKTER ---
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  _buildSectionTitle('Catatan Dokter'),
+                                  Icon(
+                                      isDokter
+                                          ? Icons.edit
+                                          : Icons.lock_outline,
+                                      size: 14,
+                                      color: Colors.grey),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              if (isDokter)
+                                TextField(
+                                  controller: doctorNotesController,
+                                  minLines: 3,
+                                  maxLines: 4,
+                                  style: const TextStyle(
+                                      fontFamily: 'Poppins', fontSize: 12),
+                                  decoration: InputDecoration(
+                                    hintText:
+                                        'Tulis diagnosis atau tindakan...',
+                                    hintStyle: const TextStyle(
+                                        fontFamily: 'Poppins',
+                                        color: Colors.grey,
+                                        fontSize: 12),
+                                    filled: true,
+                                    fillColor: const Color(0xFFF9FAFB),
+                                    border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide: BorderSide(
+                                            color: Colors.grey.shade300)),
+                                    enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide: BorderSide(
+                                            color: Colors.grey.shade300)),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 16),
+                                  ),
+                                )
+                              else
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                      color: const Color(0xFFF9FAFB),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                          color: Colors.grey.shade200)),
+                                  child: PoppinsTextView(
+                                      value: (data['notes_dokter'] == null ||
+                                              data['notes_dokter'] == "")
+                                          ? 'Belum ada catatan dari dokter.'
+                                          : data['notes_dokter'],
+                                      color: Colors.black54,
+                                      size: 12),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      // --- TOMBOL AKSI ---
+                      const SizedBox(height: 15),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => currentCtrl.backToPreviousStep(),
+                              style: OutlinedButton.styleFrom(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
+                                side: BorderSide(color: Colors.grey.shade300),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8)),
+                              ),
+                              child: const PoppinsTextView(
+                                  value: 'Kembali',
+                                  color: Colors.black54,
+                                  fontWeight: FontWeight.w600,
+                                  size: 12),
+                            ),
+                          ),
+                          if (isDokter) ...[
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  String isiCatatan =
+                                      doctorNotesController.text;
+                                  currentCtrl.saveDoctorNotes(
+                                      widget.analysisId, isiCatatan);
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 14),
+                                  backgroundColor: AppColors.blueDark,
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8)),
+                                ),
+                                child: const PoppinsTextView(
+                                    value: 'Simpan',
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
                                     size: 12),
                               ),
                             ),
-                            // Fullscreen
-                            Positioned(
-                              top: 20,
-                              right: 20,
-                              child: InkWell(
-                                onTap: () => _openFullscreen(imageUrl),
-                                child: Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                      color: Colors.white24,
-                                      borderRadius: BorderRadius.circular(6)),
-                                  child: const Icon(Icons.fullscreen,
-                                      color: Colors.white, size: 20),
-                                ),
-                              ),
-                            ),
-                            // Toolbar
-                            Positioned(
-                              bottom: 24,
-                              left: 0,
-                              right: 0,
-                              child: Center(
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 10),
-                                  decoration: BoxDecoration(
-                                      color: const Color(0xFF2C2C2C)
-                                          .withValues(alpha: 0.9),
-                                      borderRadius: BorderRadius.circular(50)),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      _buildToolIcon(Icons.zoom_in,
-                                          onTap: _zoomIn),
-                                      const SizedBox(width: 12),
-                                      _buildToolIcon(Icons.zoom_out,
-                                          onTap: _zoomOut),
-                                      const SizedBox(width: 12),
-                                      _buildToolIcon(Icons.rotate_right,
-                                          onTap: _rotateImage),
-                                      const SizedBox(width: 12),
-                                      _buildToolIcon(Icons.contrast,
-                                          onTap: _toggleContrast),
-                                      const SizedBox(width: 12),
-                                      _buildToolIcon(Icons.refresh,
-                                          onTap: _resetView),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                          ]
+                        ],
                       ),
-                    ),
-
-                    SpaceSizer(horizontal: 2.5),
-
-                    // === KANAN: PANEL INFO (40%) ===
-                    Expanded(
-                      flex: 4,
-                      child: Container(
-                        padding: const EdgeInsets.only(bottom: 2),
-                        child: Column(
-                          children: [
-                            Expanded(
-                              child: SingleChildScrollView(
-                                padding: const EdgeInsets.only(right: 4),
-                                child: Column(
-                                  children: [
-                                    // KARTU 1: INFO PASIEN
-                                    Container(
-                                      width: double.infinity,
-                                      padding: EdgeInsets.all(
-                                          SizeConfig.horizontal(1.5)),
-                                      decoration: _boxDecorationStyle(),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          _buildSectionTitle(
-                                              'Informasi Pasien'),
-                                          SpaceSizer(vertical: 1.5),
-                                          _buildInfoRow('Nama Pasien',
-                                              data['nama_pasien'] ?? "-",
-                                              isBold: true),
-                                          _buildInfoRow(
-                                              'ID Medis', data['id_rm'] ?? "-"),
-                                          _buildInfoRow('Waktu Scan',
-                                              data['waktu_scan'] ?? "-"),
-                                        ],
-                                      ),
-                                    ),
-
-                                    SpaceSizer(vertical: 2),
-
-                                    // KARTU 2: PREDIKSI AI
-                                    Container(
-                                      width: double.infinity,
-                                      padding: EdgeInsets.all(
-                                          SizeConfig.horizontal(1.5)),
-                                      decoration: _boxDecorationStyle(),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          _buildSectionTitle('Prediksi AI'),
-                                          SpaceSizer(vertical: 1.5),
-                                          Container(
-                                            padding: const EdgeInsets.all(12),
-                                            decoration: BoxDecoration(
-                                              color: isCancer
-                                                  ? AppColors.redAlert
-                                                      .withValues(alpha: 0.1)
-                                                  : Colors.green
-                                                      .withValues(alpha: 0.1),
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                              border: Border.all(
-                                                color: isCancer
-                                                    ? AppColors.redAlert
-                                                        .withValues(alpha: 0.3)
-                                                    : Colors.green
-                                                        .withValues(alpha: 0.3),
-                                              ),
-                                            ),
-                                            child: Row(
-                                              children: [
-                                                Icon(
-                                                  isCancer
-                                                      ? Icons
-                                                          .warning_amber_rounded
-                                                      : Icons
-                                                          .check_circle_outline,
-                                                  color: isCancer
-                                                      ? AppColors.redAlert
-                                                      : Colors.green,
-                                                  size: 30,
-                                                ),
-                                                SpaceSizer(horizontal: 1),
-                                                Expanded(
-                                                  child: Column(
-                                                    crossAxisAlignment:
-                                                        CrossAxisAlignment
-                                                            .start,
-                                                    children: [
-                                                      PoppinsTextView(
-                                                        value: isCancer
-                                                            ? (data['result'] ??
-                                                                "CANCER DETECTED")
-                                                            : "NON-CANCER",
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                        color: isCancer
-                                                            ? AppColors.redAlert
-                                                            : Colors.green,
-                                                        size: SizeConfig
-                                                                .safeBlockHorizontal *
-                                                            1.0,
-                                                      ),
-                                                      PoppinsTextView(
-                                                        value:
-                                                            'Confidence: ${data['confidence']}%',
-                                                        size: SizeConfig
-                                                                .safeBlockHorizontal *
-                                                            0.8,
-                                                        color: AppColors.black,
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          SpaceSizer(vertical: 1.5),
-                                          PoppinsTextView(
-                                              value:
-                                                  "Catatan Teknis (Radiolog):",
-                                              size: SizeConfig
-                                                      .safeBlockHorizontal *
-                                                  0.8,
-                                              fontWeight: FontWeight.bold,
-                                              color: AppColors.grey),
-                                          SpaceSizer(vertical: 0.5),
-                                          PoppinsTextView(
-                                              value:
-                                                  data['notes_radiolog'] ?? "-",
-                                              size: SizeConfig
-                                                      .safeBlockHorizontal *
-                                                  0.9,
-                                              color: AppColors.black),
-                                        ],
-                                      ),
-                                    ),
-
-                                    SpaceSizer(vertical: 2),
-
-                                    // KARTU 3: MODE TAMPILAN
-                                    Container(
-                                      width: double.infinity,
-                                      padding: EdgeInsets.all(
-                                          SizeConfig.horizontal(1.5)),
-                                      decoration: _boxDecorationStyle(),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          _buildSectionTitle('Mode Tampilan'),
-                                          SpaceSizer(vertical: 1.5),
-                                          Row(
-                                            children: [
-                                              Expanded(
-                                                  child: _buildModeButton(
-                                                      '2D Slice',
-                                                      viewMode == '2D')),
-                                              SpaceSizer(horizontal: 1),
-                                              Expanded(
-                                                  child: _buildModeButton(
-                                                      '3D Volume',
-                                                      viewMode == '3D')),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-
-                                    SpaceSizer(vertical: 2),
-
-                                    // KARTU 4: CATATAN DOKTER
-                                    Container(
-                                      width: double.infinity,
-                                      padding: EdgeInsets.all(
-                                          SizeConfig.horizontal(1.5)),
-                                      decoration: _boxDecorationStyle(),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              _buildSectionTitle(
-                                                  'Catatan Dokter'),
-                                              if (isDokter)
-                                                Icon(Icons.edit,
-                                                    size: 16,
-                                                    color: AppColors.blueDark)
-                                              else
-                                                Icon(Icons.lock_outline,
-                                                    size: 16,
-                                                    color: AppColors.grey),
-                                            ],
-                                          ),
-                                          SpaceSizer(vertical: 1.5),
-                                          if (isDokter)
-                                            CustomTextField(
-                                              controller: doctorNotesController,
-                                              title: '',
-                                              hintText: 'Tulis diagnosis...',
-                                              minLines: 4,
-                                              maxLines: 6,
-                                              borderRadius: 0.5,
-                                              fillColor: AppColors.greySecond
-                                                  .withValues(alpha: 0.1),
-                                            )
-                                          else
-                                            Container(
-                                              width: double.infinity,
-                                              padding: const EdgeInsets.all(12),
-                                              decoration: BoxDecoration(
-                                                  color: AppColors.greySecond
-                                                      .withValues(alpha: 0.2),
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
-                                                  border: Border.all(
-                                                      color: AppColors
-                                                          .greyDisabled)),
-                                              child: PoppinsTextView(
-                                                  value: (data['notes_dokter'] ==
-                                                              null ||
-                                                          data['notes_dokter'] ==
-                                                              "")
-                                                      ? 'Belum ada catatan dari dokter.'
-                                                      : data['notes_dokter'],
-                                                  color: AppColors.black
-                                                      .withValues(alpha: 0.7),
-                                                  size: SizeConfig
-                                                          .safeBlockHorizontal *
-                                                      0.8),
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-
-                                    SpaceSizer(vertical: 2),
-                                  ],
-                                ),
-                              ),
-                            ),
-
-                            // TOMBOL AKSI DI BAGIAN BAWAH PANEL
-                            SpaceSizer(vertical: 1),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: CustomFlatButton(
-                                    text: 'Kembali',
-                                    onTap: () =>
-                                        currentCtrl.backToPreviousStep(),
-                                    height: SizeConfig.safeBlockVertical * 4.5,
-                                    backgroundColor: AppColors.greySecond
-                                        .withValues(alpha: 0.2),
-                                    borderColor: Colors.transparent,
-                                    textColor:
-                                        AppColors.black.withValues(alpha: 0.7),
-                                    radius: 0.8,
-                                    textSize:
-                                        SizeConfig.safeBlockHorizontal * 0.75,
-                                  ),
-                                ),
-                                if (isDokter) ...[
-                                  SpaceSizer(horizontal: 1),
-                                  Expanded(
-                                    child: CustomFlatButton(
-                                      text: 'Simpan',
-                                      onTap: () {
-                                        String isiCatatan =
-                                            doctorNotesController.text;
-                                        currentCtrl.saveDoctorNotes(
-                                            widget.analysisId, isiCatatan);
-                                      },
-                                      height:
-                                          SizeConfig.safeBlockVertical * 4.5,
-                                      backgroundColor: AppColors.blueDark,
-                                      textColor: Colors.white,
-                                      colorIconImage: Colors.white,
-                                      radius: 0.8,
-                                      textSize:
-                                          SizeConfig.safeBlockHorizontal * 0.75,
-                                    ),
-                                  ),
-                                ]
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 );
-              }),
+
+                // Responsive Layout
+                if (constraints.maxWidth < 1000) {
+                  return Column(
+                    children: [
+                      SizedBox(
+                          height: 400,
+                          child: imageViewer), // Tinggi diperbesar untuk slider
+                      const SizedBox(height: 16),
+                      Expanded(child: infoPanel),
+                    ],
+                  );
+                } else {
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                          flex: 6,
+                          child: SizedBox(
+                            height: availableHeight,
+                            child: imageViewer,
+                          )),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        flex: 4,
+                        child: SizedBox(
+                          height: availableHeight,
+                          child: infoPanel,
+                        ),
+                      ),
+                    ],
+                  );
+                }
+              }));
+        }));
+  }
+
+  // --- WIDGET HELPER ---
+
+  Widget _build3DChip(String label, String val, Color activeColor) {
+    bool isSelected = _label3D == val;
+    return ChoiceChip(
+      label: Text(label,
+          style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: isSelected ? Colors.white : Colors.black87)),
+      selected: isSelected,
+      selectedColor: activeColor,
+      backgroundColor: Colors.grey.shade100,
+      side: BorderSide.none,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      onSelected: (selected) {
+        if (selected) setState(() => _label3D = val);
+      },
+    );
+  }
+
+  Widget _buildDropdown(
+      {required String label,
+      required dynamic value,
+      required List<DropdownMenuItem> items,
+      required Function(dynamic) onChanged}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        PoppinsTextView(
+            value: label,
+            size: 11,
+            fontWeight: FontWeight.bold,
+            color: Colors.grey.shade600),
+        const SizedBox(height: 4),
+        Container(
+          height: 38,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+              color: const Color(0xffF5F7FA),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey.shade300)),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton(
+              isDense: true,
+              isExpanded: true,
+              value: value,
+              items: items,
+              onChanged: onChanged,
+              style: const TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 12,
+                  color: Colors.black87,
+                  fontWeight: FontWeight.w600),
             ),
-          ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _tableCell(String text, {bool isHeader = false}) {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Center(
+        child: PoppinsTextView(
+          value: text,
+          size: 11,
+          fontWeight: isHeader ? FontWeight.bold : FontWeight.w500,
+          color: isHeader ? Colors.black87 : Colors.black54,
         ),
       ),
     );
   }
 
-  // --- WIDGET HELPER ---
-  BoxDecoration _boxDecorationStyle() {
-    return BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: AppColors.greyDisabled),
-      boxShadow: [
-        BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4))
-      ],
-    );
+  List<TableRow> _buildMetricRows(Map metrics) {
+    List<TableRow> rows = [];
+    metrics.forEach((className, data) {
+      rows.add(TableRow(children: [
+        _tableCell(className),
+        _tableCell(data['recall'].toString()),
+        _tableCell(data['specificity'].toString()),
+      ]));
+    });
+    return rows;
   }
 
   Widget _buildSectionTitle(String title) {
     return PoppinsTextView(
         value: title,
         fontWeight: FontWeight.bold,
-        size: SizeConfig.safeBlockHorizontal * 0.95,
-        color: AppColors.black);
+        size: 14,
+        color: Colors.black87);
   }
 
   Widget _buildInfoRow(String label, String value, {bool isBold = false}) {
@@ -621,41 +1074,19 @@ class _DetailAnalisisPageState extends State<DetailAnalisisPage> {
       padding: const EdgeInsets.only(bottom: 8.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          PoppinsTextView(
-              value: label,
-              color: AppColors.grey,
-              size: SizeConfig.safeBlockHorizontal * 0.75),
-          PoppinsTextView(
-              value: value,
-              fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
-              size: SizeConfig.safeBlockHorizontal * 0.8,
-              color: isBold
-                  ? AppColors.black
-                  : AppColors.black.withValues(alpha: 0.8)),
+          PoppinsTextView(value: label, color: Colors.grey.shade600, size: 12),
+          const SizedBox(width: 16),
+          Expanded(
+            child: PoppinsTextView(
+                value: value,
+                fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
+                size: 12,
+                textAlign: TextAlign.right,
+                color: isBold ? Colors.black : Colors.black87),
+          ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildModeButton(String label, bool isActive) {
-    return InkWell(
-      onTap: () =>
-          setState(() => viewMode = label.contains('2D') ? '2D' : '3D'),
-      child: Container(
-        alignment: Alignment.center,
-        padding: EdgeInsets.symmetric(vertical: SizeConfig.vertical(1.5)),
-        decoration: BoxDecoration(
-          color: isActive ? AppColors.blueDark : Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-              color: isActive ? AppColors.blueDark : AppColors.greyDisabled),
-        ),
-        child: PoppinsTextView(
-            value: label,
-            color: isActive ? Colors.white : AppColors.grey,
-            fontWeight: FontWeight.bold,
-            size: SizeConfig.safeBlockHorizontal * 0.75),
       ),
     );
   }
@@ -665,9 +1096,81 @@ class _DetailAnalisisPageState extends State<DetailAnalisisPage> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(30),
       child: Padding(
-        padding: const EdgeInsets.all(6.0),
-        child: Icon(icon, color: Colors.white, size: 20),
+          padding: const EdgeInsets.all(6.0),
+          child: Icon(icon, color: Colors.white, size: 16)),
+    );
+  }
+
+  Widget _buildDivider() {
+    return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 12),
+        child: Divider(color: Color(0xFFEEEEEE), height: 1));
+  }
+
+  Widget _buildLegendItem(Color color, String label) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                  color: color, borderRadius: BorderRadius.circular(2))),
+          const SizedBox(width: 8),
+          Expanded(
+              child: PoppinsTextView(
+                  value: label, size: 11, color: Colors.black54)),
+        ],
       ),
+    );
+  }
+}
+
+class WebView3DWidget extends StatefulWidget {
+  final String url;
+  const WebView3DWidget({super.key, required this.url});
+
+  @override
+  State<WebView3DWidget> createState() => _WebView3DWidgetState();
+}
+
+class _WebView3DWidgetState extends State<WebView3DWidget> {
+  late final WebViewController _controller;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = WebViewController();
+
+    if (!kIsWeb) {
+      _controller.setJavaScriptMode(JavaScriptMode.unrestricted);
+      _controller.setBackgroundColor(Colors.black);
+      _controller.setNavigationDelegate(
+        NavigationDelegate(
+          onPageFinished: (String url) {
+            if (mounted)
+              setState(() {
+                _isLoading = false;
+              });
+          },
+        ),
+      );
+    } else {
+      _isLoading = false;
+    }
+    _controller.loadRequest(Uri.parse(widget.url));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        WebViewWidget(controller: _controller),
+        if (_isLoading)
+          const Center(child: CircularProgressIndicator(color: Colors.white)),
+      ],
     );
   }
 }

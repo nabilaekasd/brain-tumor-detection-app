@@ -6,7 +6,7 @@ import 'package:axon_vision/pages/global_widgets/frame/frame_scaffold.dart';
 import 'package:axon_vision/pages/global_widgets/text_fonts/poppins_text_view.dart';
 import 'package:axon_vision/pages/radiolog/radiolog_patient_view.dart';
 import 'package:axon_vision/pages/radiolog/radiolog_profile_view.dart';
-import 'package:axon_vision/pages/detail_analisis_page.dart';
+import 'package:axon_vision/helpers/snackbar.dart';
 import 'package:axon_vision/utils/api_config.dart';
 import 'package:axon_vision/utils/app_colors.dart';
 import 'package:axon_vision/utils/asset_list.dart';
@@ -142,7 +142,7 @@ class RadiologHomeView extends StatelessWidget {
                       child: Text(
                         "Riwayat Analisis Terbaru",
                         style: GoogleFonts.poppins(
-                            fontSize: isMobile ? 12 : 15,
+                            fontSize: 14,
                             fontWeight: FontWeight.bold,
                             color: const Color(0xff2C3E50)),
                         maxLines: 1,
@@ -193,7 +193,7 @@ class RadiologHomeView extends StatelessWidget {
                               child: PoppinsTextView(
                                   value: "Belum ada riwayat scan.",
                                   color: Colors.grey,
-                                  fontSize: 14)));
+                                  fontSize: 12)));
                     }
 
                     var recentHistory =
@@ -239,7 +239,7 @@ class RadiologHomeView extends StatelessWidget {
                           title: Text(item['nama_pasien'] ?? 'Tanpa Nama',
                               style: GoogleFonts.poppins(
                                   fontWeight: FontWeight.w600,
-                                  fontSize: 15,
+                                  fontSize: 14,
                                   color: const Color(0xff2C3E50)),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis),
@@ -278,14 +278,14 @@ class RadiologHomeView extends StatelessWidget {
       children: [
         Obx(() => Text("${getGreeting()}, ${controller.displayName.value}!",
             style: GoogleFonts.poppins(
-                fontSize: 20,
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: const Color(0xff2C3E50)),
             maxLines: 2,
             overflow: TextOverflow.ellipsis)),
         const SizedBox(height: 4),
         PoppinsTextView(
-            value: "Update hari ini: $date", fontSize: 13, color: Colors.grey),
+            value: "Update hari ini: $date", fontSize: 12, color: Colors.grey),
       ],
     );
   }
@@ -307,7 +307,9 @@ class RadiologHomeView extends StatelessWidget {
           const SizedBox(width: 8),
           Text("${DateTime.now().year}",
               style: GoogleFonts.poppins(
-                  fontWeight: FontWeight.bold, color: const Color(0xff2C3E50))),
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xff2C3E50))),
         ],
       ),
     );
@@ -350,7 +352,7 @@ class RadiologHomeView extends StatelessWidget {
           const SizedBox(height: 20),
           PoppinsTextView(
               value: title,
-              fontSize: 13,
+              fontSize: 12,
               fontWeight: FontWeight.w500,
               color: Colors.grey),
           const SizedBox(height: 4),
@@ -376,192 +378,196 @@ class RadiologDashboardPage extends StatelessWidget {
     SizeConfig().init(context);
     final RadiologController controller = Get.put(RadiologController());
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        bool isMobile = constraints.maxWidth < 800;
+    double screenWidth = MediaQuery.of(context).size.width;
+    double screenHeight = MediaQuery.of(context).size.height;
 
-        // =========================================================
-        // JIKA DIBUKA DI HP: PAKAI TAMPILAN ANDROID NATIVE MURNI
-        // (100% BEBAS LAYAR MERAH & BEBAS BACKGROUND HITAM)
-        // =========================================================
-        if (isMobile) {
-          return Scaffold(
-            backgroundColor: AppColors.white,
-            appBar: AppBar(
-              backgroundColor: Colors.white,
-              elevation: 0.5,
-              iconTheme: IconThemeData(
-                  color: AppColors.black), // Ikon hamburger bawaan
-              title: Obx(() {
-                // Dummy GetX
-                var _ = controller.activeIndex.value;
-                return Text(
-                  controller.currentHeaderTitle,
-                  style: GoogleFonts.poppins(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.blueDark),
-                );
-              }),
-              actions: [
-                const NotificationBell(role: 'Radiolog'),
-                const SizedBox(width: 8),
-                _buildProfileMenu(controller),
-                const SizedBox(width: 16),
+    bool isMobile = screenWidth < 850;
+    bool showRadiologName = screenWidth > 1000;
+
+    if (isMobile) {
+      return Scaffold(
+        backgroundColor: const Color(0xffF7F9FC),
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0.5,
+          iconTheme: IconThemeData(color: AppColors.black),
+          title: Obx(() {
+            var _ = controller.activeIndex.value;
+            return Text(
+              controller.currentHeaderTitle,
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: AppColors.blueDark,
+              ),
+            );
+          }),
+          actions: [
+            const NotificationBell(role: 'Radilog'),
+            const SizedBox(width: 8),
+            _buildProfileMenu(controller),
+            const SizedBox(width: 16),
+          ],
+        ),
+        drawer: Drawer(
+          child: _buildSidebarContent(context, controller, true),
+        ),
+        body: Obx(() {
+          var _ = controller.activeIndex.value;
+          return Container(
+            width: double.infinity,
+            height: double.infinity,
+            padding: const EdgeInsets.all(16),
+            child: ClipRRect(child: _buildContent(controller)),
+          );
+        }),
+      );
+    }
+
+    return FrameScaffold(
+      heightBar: 0,
+      elevation: 0,
+      color: AppColors.black,
+      statusBarColor: AppColors.white,
+      statusBarBrightness: Brightness.light,
+      view: Obx(
+        () => Center(
+          child: Container(
+            width: screenWidth * 0.95,
+            height: screenHeight * 0.95,
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 20,
+                  offset: const Offset(0, 4),
+                ),
               ],
             ),
-            // Menu samping menggunakan Drawer Native Flutter
-            drawer: Drawer(
-              child: _buildSidebarContent(context, controller, true),
-            ),
-            body: Obx(() {
-              var _ = controller.activeIndex.value;
-              return _buildContent(controller);
-            }),
-          );
-        }
-
-        // =========================================================
-        // JIKA DIBUKA DI LAPTOP: PAKAI KODE ORIGINALMU YG KEREN
-        // =========================================================
-        return FrameScaffold(
-          heightBar: 0,
-          elevation: 0,
-          color: AppColors.black,
-          statusBarColor: AppColors.white,
-          colorScaffold: AppColors.white,
-          statusBarBrightness: Brightness.light,
-          view: Obx(
-            () => Center(
-              // <-- INI OBX RAKSASA ORIGINALMU
-              child: Container(
-                width: SizeConfig.safeBlockHorizontal * 90,
-                height: SizeConfig.safeBlockVertical * 96,
-                decoration: BoxDecoration(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.circular(
-                      SizeConfig.safeBlockHorizontal * 1.5),
-                  boxShadow: [
-                    BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 20,
-                        offset: const Offset(0, 4))
-                  ],
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeInOut,
-                      width: controller.isSidebarExpanded.value ? 250 : 0,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFf0F4FA),
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(
-                              SizeConfig.safeBlockHorizontal * 1.5),
-                          bottomLeft: Radius.circular(
-                              SizeConfig.safeBlockHorizontal * 1.5),
-                        ),
-                      ),
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: SizedBox(
-                          width: 250,
-                          child:
-                              _buildSidebarContent(context, controller, false),
-                        ),
-                      ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                  width: controller.isSidebarExpanded.value ? 250 : 0,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFf0F4FA),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      bottomLeft: Radius.circular(20),
                     ),
-                    if (controller.isSidebarExpanded.value)
+                  ),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: SizedBox(
+                      width: 250,
+                      child: _buildSidebarContent(context, controller, false),
+                    ),
+                  ),
+                ),
+                if (controller.isSidebarExpanded.value)
+                  Container(
+                    width: 1,
+                    height: double.infinity,
+                    color: AppColors.greyDisabled.withValues(alpha: 0.5),
+                  ),
+                Expanded(
+                  child: Column(
+                    children: [
                       Container(
-                          width: 1,
-                          height: double.infinity,
-                          color: AppColors.greyDisabled.withValues(alpha: 0.5)),
-                    Expanded(
-                      child: Column(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                vertical: 16, horizontal: 24),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: controller.isSidebarExpanded.value
-                                  ? const BorderRadius.only(
-                                      topRight: Radius.circular(20))
-                                  : const BorderRadius.only(
-                                      topLeft: Radius.circular(20),
-                                      topRight: Radius.circular(20)),
-                              border: Border(
-                                  bottom: BorderSide(
-                                      color: AppColors.greyDisabled
-                                          .withValues(alpha: 0.5),
-                                      width: 1)),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 16,
+                          horizontal: 24,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: controller.isSidebarExpanded.value
+                              ? const BorderRadius.only(
+                                  topRight: Radius.circular(20))
+                              : const BorderRadius.only(
+                                  topLeft: Radius.circular(20),
+                                  topRight: Radius.circular(20)),
+                          border: Border(
+                            bottom: BorderSide(
+                              color:
+                                  AppColors.greyDisabled.withValues(alpha: 0.5),
+                              width: 1,
                             ),
-                            child: Row(
-                              children: [
-                                IconButton(
-                                  onPressed: () => controller.toggleSidebar(),
-                                  icon: Icon(
-                                      controller.isSidebarExpanded.value
-                                          ? Icons.menu_open
-                                          : Icons.menu,
-                                      color: AppColors.black,
-                                      size: 24),
-                                ),
-                                const SizedBox(width: 16),
-                                PoppinsTextView(
-                                    value: controller.currentHeaderTitle,
-                                    size: 20,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            IconButton(
+                              onPressed: () => controller.toggleSidebar(),
+                              icon: Icon(
+                                controller.isSidebarExpanded.value
+                                    ? Icons.menu_open
+                                    : Icons.menu,
+                                color: AppColors.black,
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: PoppinsTextView(
+                                value: controller.currentHeaderTitle,
+                                size: 14,
+                                fontWeight: FontWeight.bold,
+                                maxLines: 1,
+                                color: AppColors.blueDark,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            const NotificationBell(role: 'Radiolog'),
+                            const SizedBox(width: 16),
+                            if (showRadiologName) ...[
+                              Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  PoppinsTextView(
+                                    value: controller.displayName.value,
+                                    size: 14,
                                     fontWeight: FontWeight.bold,
-                                    color: AppColors.blueDark),
-                                const Spacer(),
-                                const NotificationBell(role: 'Radiolog'),
-                                const SizedBox(width: 24),
-                                Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    PoppinsTextView(
-                                        value: controller.displayName.value,
-                                        size: 14,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.blueDark),
-                                    PoppinsTextView(
-                                        value: controller.displayRole.value
-                                            .toUpperCase(),
-                                        size: 10,
-                                        fontWeight: FontWeight.w500,
-                                        color: Colors.grey),
-                                  ],
-                                ),
-                                const SizedBox(width: 12),
-                                _buildProfileMenu(controller),
-                              ],
-                            ),
-                          ),
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.all(24),
-                              child: _buildContent(controller),
-                            ),
-                          ),
-                        ],
+                                    color: AppColors.blueDark,
+                                  ),
+                                  PoppinsTextView(
+                                    value: controller.displayRole.value
+                                        .toUpperCase(),
+                                    size: 10,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.grey,
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(width: 12),
+                            ],
+                            _buildProfileMenu(controller),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                      Expanded(
+                        child: Container(
+                          width: double.infinity,
+                          height: double.infinity,
+                          padding: const EdgeInsets.all(24),
+                          child: ClipRRect(child: _buildContent(controller)),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
-  // ========================================================================
-  // SISANYA ADALAH WIDGET MENU KIRI DAN NOTIFIKASI
-  // ========================================================================
   Widget _buildSidebarContent(
       BuildContext context, RadiologController controller, bool isMobile) {
     return Column(
@@ -582,34 +588,37 @@ class RadiologDashboardPage extends StatelessWidget {
             child: Obx(() => Column(
                   children: [
                     _buildMenuItem(
-                        index: 0,
-                        label: 'Dashboard',
-                        icon: Icons.dashboard_outlined,
-                        isActive: controller.activeIndex.value == 0,
-                        onTap: () {
-                          controller.changeMenu(0);
-                          if (isMobile) Get.back(); /* Tutup Drawer Native */
-                        }),
+                      index: 0,
+                      label: 'Dashboard',
+                      icon: Icons.dashboard_outlined,
+                      isActive: controller.activeIndex.value == 0,
+                      onTap: () {
+                        controller.changeMenu(0);
+                        if (isMobile) Get.back();
+                      },
+                    ),
                     const SizedBox(height: 8),
                     _buildMenuItem(
-                        index: 1,
-                        label: 'Data Pasien & Analisis',
-                        icon: Icons.people_outline,
-                        isActive: controller.activeIndex.value == 1,
-                        onTap: () {
-                          controller.changeMenu(1);
-                          if (isMobile) Get.back();
-                        }),
+                      index: 1,
+                      label: 'Data Pasien & Analisis',
+                      icon: Icons.people_outline,
+                      isActive: controller.activeIndex.value == 1,
+                      onTap: () {
+                        controller.changeMenu(1);
+                        if (isMobile) Get.back();
+                      },
+                    ),
                     const SizedBox(height: 8),
                     _buildMenuItem(
-                        index: 2,
-                        label: 'Pengaturan Profil',
-                        icon: Icons.settings_outlined,
-                        isActive: controller.activeIndex.value == 2,
-                        onTap: () {
-                          controller.changeMenu(2);
-                          if (isMobile) Get.back();
-                        }),
+                      index: 2,
+                      label: 'Pengaturan Profil',
+                      icon: Icons.settings_rounded,
+                      isActive: controller.activeIndex.value == 2,
+                      onTap: () {
+                        controller.changeMenu(2);
+                        if (isMobile) Get.back();
+                      },
+                    ),
                   ],
                 )),
           ),
@@ -620,15 +629,21 @@ class RadiologDashboardPage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Divider(
-                  color: AppColors.grey.withValues(alpha: 0.5), thickness: 0.5),
+                color: AppColors.grey.withValues(alpha: 0.5),
+                thickness: 0.5,
+              ),
               const SizedBox(height: 10),
               PoppinsTextView(
-                  value: "Axon Vision v1.0.0", size: 11, color: AppColors.grey),
+                value: "Axon Vision v1.0.0",
+                size: 10,
+                color: AppColors.grey,
+              ),
               const SizedBox(height: 4),
               PoppinsTextView(
-                  value: "© 2026 All Rights Reserved",
-                  size: 10,
-                  color: AppColors.grey),
+                value: "© 2026 All Rights Reserved",
+                size: 10,
+                color: AppColors.grey,
+              ),
             ],
           ),
         ),
@@ -638,41 +653,60 @@ class RadiologDashboardPage extends StatelessWidget {
 
   Widget _buildProfileMenu(RadiologController controller) {
     return PopupMenuButton<String>(
+      tooltip: '',
       offset: const Offset(0, 50),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       onSelected: (val) {
-        if (val == 'profil') controller.navigateToProfile();
-        if (val == 'logout') _showLogoutDialog(controller);
+        if (val == 'profil') {
+          controller.changeMenu(2);
+        }
+        if (val == 'logout') {
+          _showLogoutDialog(controller);
+        }
       },
       child: Obx(() {
         String url = controller.profileImageUrl.value;
+        bool hasImage = url.isNotEmpty;
         return CircleAvatar(
           radius: 18,
           backgroundColor: AppColors.blueCard.withValues(alpha: 0.1),
-          backgroundImage:
-              url.isNotEmpty ? NetworkImage("${ApiConfig.baseUrl}/$url") : null,
-          child: url.isEmpty
-              ? Icon(Icons.person, color: AppColors.blueDark, size: 20)
+          backgroundImage: hasImage
+              ? NetworkImage(
+                  "${ApiConfig.baseUrl}/$url?v=${DateTime.now().millisecondsSinceEpoch}")
               : null,
+          child: hasImage
+              ? null
+              : Icon(Icons.person, color: AppColors.blueDark, size: 20),
         );
       }),
       itemBuilder: (context) => [
         const PopupMenuItem(
-            value: 'profil',
-            child: Row(children: [
-              Icon(Icons.person_outline, color: Colors.grey, size: 20),
+          value: 'profil',
+          child: Row(
+            children: [
+              Icon(Icons.person_outline, color: Colors.grey, size: 18),
               SizedBox(width: 12),
               PoppinsTextView(
-                  value: "Profil Saya", size: 14, color: Colors.black87)
-            ])),
+                value: "Profil Saya",
+                size: 12,
+                color: Colors.black87,
+              ),
+            ],
+          ),
+        ),
         const PopupMenuDivider(),
         const PopupMenuItem(
-            value: 'logout',
-            child: Row(children: [
-              Icon(Icons.logout, color: Colors.red, size: 20),
-              SizedBox(width: 12),
-              PoppinsTextView(value: "Keluar", size: 14, color: Colors.red)
-            ])),
+          value: 'logout',
+          child: Row(children: [
+            Icon(Icons.logout, color: Colors.red, size: 18),
+            SizedBox(width: 12),
+            PoppinsTextView(
+              value: "Keluar",
+              size: 12,
+              color: Colors.red,
+            ),
+          ]),
+        ),
       ],
     );
   }
@@ -706,18 +740,22 @@ class RadiologDashboardPage extends StatelessWidget {
                 color: isActive ? AppColors.blueDark : AppColors.grey),
             const SizedBox(width: 12),
             Expanded(
-                child: PoppinsTextView(
-                    value: label,
-                    size: 13,
-                    fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-                    color: isActive ? AppColors.blueDark : AppColors.grey)),
+              child: PoppinsTextView(
+                value: label,
+                size: 12,
+                fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+                color: isActive ? AppColors.blueDark : AppColors.grey,
+              ),
+            ),
             if (isActive)
               Container(
-                  width: 3,
-                  height: 20,
-                  decoration: BoxDecoration(
-                      color: AppColors.blueDark,
-                      borderRadius: BorderRadius.circular(2))),
+                width: 3,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: AppColors.blueDark,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
           ],
         ),
       ),
@@ -725,24 +763,20 @@ class RadiologDashboardPage extends StatelessWidget {
   }
 
   void _showLogoutDialog(RadiologController controller) {
-    Get.defaultDialog(
+    SnackbarHelper.showConfirmDialog(
         title: "Konfirmasi Logout",
-        middleText: "Yakin ingin keluar?",
-        textConfirm: "Ya",
-        textCancel: "Batal",
-        confirmTextColor: Colors.white,
-        buttonColor: Colors.redAccent,
+        description:
+            "Apakah Anda yakin ingin keluar dari aplikasi Axon Vision? Sesi Anda akan berakhir.",
+        confirmText: "Ya, Keluar",
+        icon: Icons.power_settings_new_rounded,
+        iconColor: Colors.redAccent,
         onConfirm: () {
-          Get.back();
           Get.delete<NotificationController>();
           controller.logout();
         });
   }
 }
 
-// ---------------------------------------------------------------------
-// KODE NOTIFIKASI DI BAWAH INI ADALAH ORIGINAL MILIKMU TANPA DIUBAH
-// ---------------------------------------------------------------------
 class NotificationBell extends StatelessWidget {
   final String role;
   const NotificationBell({super.key, required this.role});
@@ -754,8 +788,9 @@ class NotificationBell extends StatelessWidget {
         alignment: Alignment.topRight,
         child: Padding(
           padding: EdgeInsets.only(
-              top: SizeConfig.safeBlockVertical * 10,
-              right: SizeConfig.safeBlockHorizontal * 5),
+            top: SizeConfig.safeBlockVertical * 10,
+            right: SizeConfig.safeBlockHorizontal * 5,
+          ),
           child: Material(
             color: Colors.transparent,
             child: Container(
@@ -766,9 +801,10 @@ class NotificationBell extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 15,
-                      offset: const Offset(0, 5))
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 15,
+                    offset: const Offset(0, 5),
+                  ),
                 ],
               ),
               child: Column(
@@ -779,40 +815,42 @@ class NotificationBell extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         PoppinsTextView(
-                            value: "Notifikasi",
-                            fontWeight: FontWeight.bold,
-                            size: 16,
-                            color: AppColors.black),
+                          value: "Notifikasi",
+                          fontWeight: FontWeight.bold,
+                          size: 14,
+                          color: AppColors.black,
+                        ),
                         InkWell(
-                            onTap: () => Get.back(),
-                            child: const Icon(Icons.close,
-                                size: 20, color: Colors.grey)),
+                          onTap: () => Get.back(),
+                          child: const Icon(Icons.close,
+                              size: 20, color: Colors.grey),
+                        ),
                       ],
                     ),
                   ),
                   Divider(
-                      height: 1,
-                      color: AppColors.greyDisabled.withValues(alpha: 0.5)),
+                    height: 1,
+                    color: AppColors.greyDisabled.withValues(alpha: 0.5),
+                  ),
                   Expanded(
                     child: Obx(() {
                       if (notifCtrl.isLoading.value &&
                           notifCtrl.notifications.isEmpty) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-                      if (notifCtrl.notifications.isEmpty) {
                         return const Center(
-                            child: PoppinsTextView(
-                                value: "Belum ada notifikasi baru.",
-                                color: Colors.grey,
-                                size: 13));
+                          child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2)),
+                        );
                       }
                       return ListView.separated(
                           padding: EdgeInsets.zero,
                           itemCount: notifCtrl.notifications.length,
                           separatorBuilder: (c, i) => Divider(
-                              height: 1,
-                              color: AppColors.greyDisabled
-                                  .withValues(alpha: 0.5)),
+                                height: 1,
+                                color: AppColors.greyDisabled
+                                    .withValues(alpha: 0.5),
+                              ),
                           itemBuilder: (c, i) {
                             var notif = notifCtrl.notifications[i];
                             return InkWell(
@@ -821,17 +859,10 @@ class NotificationBell extends StatelessWidget {
                                 Get.back();
 
                                 if (notif.analysisId != null) {
-                                  if (role == 'Radiolog') {
-                                    final ctrl = Get.find<RadiologController>();
-                                    ctrl.activeIndex.value = 1;
-                                    ctrl.openAnalysisResult(
-                                        notif.analysisId.toString());
-                                  } else {
-                                    final ctrl = Get.find<RadiologController>();
-                                    ctrl.activeIndex.value = 1;
-                                    ctrl.openAnalysisResult(
-                                        notif.analysisId.toString());
-                                  }
+                                  final ctrl = Get.find<RadiologController>();
+                                  ctrl.activeIndex.value = 1;
+                                  ctrl.openAnalysisResult(
+                                      notif.analysisId.toString());
                                 }
                               },
                               child: Container(
@@ -865,38 +896,43 @@ class NotificationBell extends StatelessWidget {
                                             CrossAxisAlignment.start,
                                         children: [
                                           PoppinsTextView(
-                                              value: notif.title,
-                                              fontWeight: notif.isRead
-                                                  ? FontWeight.w600
-                                                  : FontWeight.bold,
-                                              size: 13,
-                                              color: AppColors.black),
+                                            value: notif.title,
+                                            fontWeight: notif.isRead
+                                                ? FontWeight.w600
+                                                : FontWeight.bold,
+                                            size: 12,
+                                            color: AppColors.black,
+                                          ),
                                           const SizedBox(height: 4),
                                           PoppinsTextView(
-                                              value: notif.message,
-                                              size: 12,
-                                              color: Colors.black87),
+                                            value: notif.message,
+                                            size: 11,
+                                            color: Colors.black87,
+                                          ),
                                           const SizedBox(height: 8),
                                           PoppinsTextView(
-                                              value: notif.createdAt,
-                                              size: 10,
-                                              color: Colors.grey),
+                                            value: notif.createdAt,
+                                            size: 10,
+                                            color: Colors.grey,
+                                          ),
                                         ],
                                       ),
                                     ),
                                     if (!notif.isRead)
                                       const Padding(
-                                          padding: EdgeInsets.only(top: 6),
-                                          child: CircleAvatar(
-                                              radius: 4,
-                                              backgroundColor: Colors.red))
+                                        padding: EdgeInsets.only(top: 6),
+                                        child: CircleAvatar(
+                                          radius: 4,
+                                          backgroundColor: Colors.red,
+                                        ),
+                                      ),
                                   ],
                                 ),
                               ),
                             );
                           });
                     }),
-                  )
+                  ),
                 ],
               ),
             ),
@@ -926,13 +962,16 @@ class NotificationBell extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(4),
                   decoration: const BoxDecoration(
-                      color: Colors.red, shape: BoxShape.circle),
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
                   child: Text(
                     count > 9 ? '9+' : count.toString(),
                     style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold),
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),

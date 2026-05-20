@@ -16,46 +16,46 @@ class RadiologPatientView extends GetView<RadiologController> {
       }
     });
 
-    return Obx(() {
-      switch (controller.patientViewStep.value) {
-        case 0:
-          return _buildPatientListView(context);
-        case 1:
-          return _buildPatientDetailView();
-        case 2:
-          return _buildUploadFormView();
-        case 3:
-          return DetailAnalisisPage(
-            analysisId: controller.selectedAnalysisId.value,
-            role: "RADIOLOG",
-          );
-        default:
-          return _buildPatientListView(context);
-      }
-    });
+    // BUNGKUS DENGAN LAYOUT BUILDER UNTUK RESPONSIVITAS TOTAL
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        bool isMobile = constraints.maxWidth < 650;
+
+        return Obx(() {
+          switch (controller.patientViewStep.value) {
+            case 0:
+              return _buildPatientListView(context, isMobile);
+            case 1:
+              return _buildPatientDetailView(isMobile);
+            case 2:
+              return _buildUploadFormView(isMobile);
+            case 3:
+              return DetailAnalisisPage(
+                analysisId: controller.selectedAnalysisId.value,
+                role: "RADIOLOG",
+              );
+            default:
+              return _buildPatientListView(context, isMobile);
+          }
+        });
+      },
+    );
   }
 
   // --- 1. HALAMAN DAFTAR PASIEN ---
-  Widget _buildPatientListView(BuildContext context) {
+  Widget _buildPatientListView(BuildContext context, bool isMobile) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        PoppinsTextView(
-          value: "Data Pasien",
-          size: 24,
-          fontWeight: FontWeight.bold,
-          color: AppColors.blueDark,
-        ),
-        const SizedBox(height: 8),
         const PoppinsTextView(
           value:
               "Pilih pasien untuk melihat detail atau upload hasil pemeriksaan.",
-          size: 14,
+          size: 12, // Diperkecil dari 14
           color: Colors.grey,
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
 
-        // Search Bar
+        // Search Bar & Refresh
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
@@ -67,10 +67,10 @@ class RadiologPatientView extends GetView<RadiologController> {
             children: [
               Expanded(
                 child: SizedBox(
-                  height: 40,
+                  height: 38, // Dirampingkan sedikit
                   child: TextField(
                     onChanged: (val) => controller.searchPatient(val),
-                    style: const TextStyle(fontFamily: 'Poppins', fontSize: 13),
+                    style: const TextStyle(fontFamily: 'Poppins', fontSize: 12),
                     decoration: InputDecoration(
                       prefixIcon: const Icon(Icons.search,
                           color: Colors.grey, size: 18),
@@ -90,10 +90,10 @@ class RadiologPatientView extends GetView<RadiologController> {
               const SizedBox(width: 12),
               ElevatedButton.icon(
                 onPressed: () => controller.fetchPatients(),
-                icon: const Icon(Icons.refresh, color: Colors.white, size: 18),
+                icon: const Icon(Icons.refresh, color: Colors.white, size: 16),
                 label: const PoppinsTextView(
                   value: "Refresh",
-                  size: 13,
+                  size: 12,
                   color: Colors.white,
                   fontWeight: FontWeight.w600,
                 ),
@@ -108,7 +108,7 @@ class RadiologPatientView extends GetView<RadiologController> {
             ],
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
 
         // Tabel Data
         Expanded(
@@ -140,51 +140,17 @@ class RadiologPatientView extends GetView<RadiologController> {
                     border:
                         Border(bottom: BorderSide(color: Color(0xffEEEEEE))),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
+                      Expanded(flex: 2, child: _headerTabel("ID REKAM MEDIS")),
+                      Expanded(flex: 3, child: _headerTabel("NAMA PASIEN")),
+                      if (!isMobile)
+                        Expanded(flex: 2, child: _headerTabel("GENDER")),
+                      if (!isMobile)
+                        Expanded(flex: 2, child: _headerTabel("TGL LAHIR")),
+                      Expanded(flex: 2, child: _headerTabel("STATUS")),
                       Expanded(
-                          flex: 2,
-                          child: PoppinsTextView(
-                              value: "ID REKAM MEDIS",
-                              size: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey)),
-                      Expanded(
-                          flex: 3,
-                          child: PoppinsTextView(
-                              value: "NAMA PASIEN",
-                              size: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey)),
-                      Expanded(
-                          flex: 2,
-                          child: PoppinsTextView(
-                              value: "GENDER",
-                              size: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey)),
-                      Expanded(
-                          flex: 2,
-                          child: PoppinsTextView(
-                              value: "TGL LAHIR",
-                              size: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey)),
-                      Expanded(
-                          flex: 2,
-                          child: PoppinsTextView(
-                              value: "STATUS",
-                              size: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey)),
-                      Expanded(
-                          flex: 1,
-                          child: PoppinsTextView(
-                              value: "AKSI",
-                              size: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey,
-                              textAlign: TextAlign.center)),
+                          flex: 1, child: Center(child: _headerTabel("AKSI"))),
                     ],
                   ),
                 ),
@@ -199,50 +165,53 @@ class RadiologPatientView extends GetView<RadiologController> {
                       return const Center(
                           child: PoppinsTextView(
                               value: "Data tidak ditemukan",
-                              size: 13,
+                              size: 12,
                               color: Colors.grey));
                     }
 
                     return ListView.separated(
                       padding: EdgeInsets.zero,
-                      itemCount: controller.filteredPatientList.length,
+                      itemCount: controller.currentPatients.length,
                       separatorBuilder: (c, i) =>
                           const Divider(height: 1, color: Color(0xffEEEEEE)),
                       itemBuilder: (context, index) {
                         final p = controller.currentPatients[index];
                         return Padding(
                           padding: const EdgeInsets.symmetric(
-                              vertical: 12, horizontal: 16),
+                              vertical: 10, horizontal: 16),
                           child: Row(
                             children: [
                               Expanded(
                                   flex: 2,
                                   child: PoppinsTextView(
                                       value: p.idPasienRs,
-                                      size: 13,
+                                      size: 12,
                                       fontWeight: FontWeight.bold,
                                       color: AppColors.blueDark)),
                               Expanded(
                                   flex: 3,
                                   child: PoppinsTextView(
                                       value: p.nama,
-                                      size: 13,
+                                      size: 12,
                                       fontWeight: FontWeight.w600)),
+                              if (!isMobile)
+                                Expanded(
+                                    flex: 2,
+                                    child: PoppinsTextView(
+                                        value: p.jenisKelamin,
+                                        size: 12,
+                                        color: Colors.black87)),
+                              if (!isMobile)
+                                Expanded(
+                                    flex: 2,
+                                    child: PoppinsTextView(
+                                        value: p.tanggalLahir,
+                                        size: 12,
+                                        color: Colors.grey)),
                               Expanded(
                                   flex: 2,
-                                  child: PoppinsTextView(
-                                      value: p.jenisKelamin,
-                                      size: 13,
-                                      color: Colors.black87)),
-                              Expanded(
-                                  flex: 2,
-                                  child: PoppinsTextView(
-                                      value: p.tanggalLahir,
-                                      size: 13,
-                                      color: Colors.grey)),
-                              Expanded(
-                                  flex: 2,
-                                  child: _buildStatusBadge(p.statusPasien)),
+                                  child: _buildStatusBadge(p.statusPasien,
+                                      alignLeft: true)),
                               Expanded(
                                 flex: 1,
                                 child: Center(
@@ -268,7 +237,7 @@ class RadiologPatientView extends GetView<RadiologController> {
                 // Pagination
                 Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   decoration: BoxDecoration(
                     color: const Color(0xffF9FAFB),
                     border: Border(
@@ -283,29 +252,33 @@ class RadiologPatientView extends GetView<RadiologController> {
                       Obx(() => PoppinsTextView(
                             value:
                                 "Halaman ${controller.patientCurrentPage} dari ${controller.totalPatientPages} (Total ${controller.filteredPatientList.length})",
-                            size: 12,
+                            size: 11,
                             color: Colors.grey,
                           )),
                       Row(
                         children: [
                           IconButton(
+                              constraints: const BoxConstraints(),
+                              padding: const EdgeInsets.all(4),
                               onPressed: () => controller.prevPatientPage(),
                               icon: const Icon(Icons.chevron_left,
-                                  size: 20, color: Colors.grey)),
+                                  size: 18, color: Colors.grey)),
                           Container(
-                            padding: const EdgeInsets.all(8),
+                            padding: const EdgeInsets.all(6),
                             decoration: BoxDecoration(
                                 color: AppColors.blueDark,
                                 shape: BoxShape.circle),
                             child: Obx(() => PoppinsTextView(
                                 value: "${controller.patientCurrentPage}",
-                                size: 12,
+                                size: 11,
                                 color: Colors.white)),
                           ),
                           IconButton(
+                              constraints: const BoxConstraints(),
+                              padding: const EdgeInsets.all(4),
                               onPressed: () => controller.nextPatientPage(),
                               icon: const Icon(Icons.chevron_right,
-                                  size: 20, color: Colors.grey))
+                                  size: 18, color: Colors.grey))
                         ],
                       )
                     ],
@@ -320,31 +293,30 @@ class RadiologPatientView extends GetView<RadiologController> {
   }
 
   // --- 2. HALAMAN DETAIL PASIEN (DIPERBAIKI) ---
-  Widget _buildPatientDetailView() {
+  Widget _buildPatientDetailView(bool isMobile) {
     final p = controller.selectedPatient.value!;
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Tombol Kembali
           TextButton.icon(
             onPressed: () => controller.backToPreviousStep(),
-            icon: const Icon(Icons.arrow_back, color: Colors.grey, size: 20),
+            icon: const Icon(Icons.arrow_back, color: Colors.grey, size: 16),
             label: const PoppinsTextView(
                 value: "Kembali ke Daftar Pasien",
-                size: 14,
+                size: 12,
                 color: Colors.grey),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
           // KARTU DETAIL PASIEN
           Container(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.all(isMobile ? 16 : 20),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(12),
               border:
-                  Border(left: BorderSide(color: AppColors.blueDark, width: 6)),
+                  Border(left: BorderSide(color: AppColors.blueDark, width: 5)),
               boxShadow: [
                 BoxShadow(
                     color: Colors.black.withValues(alpha: 0.05),
@@ -360,75 +332,102 @@ class RadiologPatientView extends GetView<RadiologController> {
                   children: [
                     PoppinsTextView(
                         value: "Detail Pasien",
-                        size: 18,
+                        size: 14,
                         fontWeight: FontWeight.bold,
                         color: AppColors.blueDark),
                     _buildStatusBadge(p.statusPasien),
                   ],
                 ),
-                const SizedBox(height: 20),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    CircleAvatar(
-                      radius: 35,
-                      backgroundColor: Colors.blue.shade50,
-                      child: PoppinsTextView(
+                const SizedBox(height: 16),
+
+                // RESPONSIF: Baris (PC) atau Bertumpuk (Mobile)
+                if (isMobile)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      CircleAvatar(
+                        radius: 35,
+                        backgroundColor: Colors.blue.shade50,
+                        child: PoppinsTextView(
                           value: p.nama[0],
                           size: 28,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.blueDark),
-                    ),
-                    const SizedBox(width: 24),
-                    Expanded(
-                      child: Column(
-                        children: [
-                          _detailRow("Nama Lengkap", p.nama),
-                          const SizedBox(height: 12),
-                          _detailRow("ID Rekam Medis", p.idPasienRs),
-                        ],
+                          color: AppColors.blueDark,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 24),
-                    Expanded(
-                      child: Column(
-                        children: [
-                          _detailRow("Jenis Kelamin", p.jenisKelamin),
-                          const SizedBox(height: 12),
-                          _detailRow("Tanggal lahir", p.tanggalLahir),
-                        ],
+                      const SizedBox(height: 20),
+                      _detailRow("Nama Lengkap", p.nama),
+                      const SizedBox(height: 8),
+                      _detailRow("ID Rekam Medis", p.idPasienRs),
+                      const SizedBox(height: 8),
+                      _detailRow("Jenis Kelamin", p.jenisKelamin),
+                      const SizedBox(height: 8),
+                      _detailRow("Tanggal Lahir", p.tanggalLahir),
+                    ],
+                  )
+                else
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      CircleAvatar(
+                        radius: 30,
+                        backgroundColor: Colors.blue.shade50,
+                        child: PoppinsTextView(
+                            value: p.nama[0],
+                            size: 24,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.blueDark),
                       ),
-                    ),
-                  ],
-                ),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        child: Column(
+                          children: [
+                            _detailRow("Nama Lengkap", p.nama),
+                            const SizedBox(height: 8),
+                            _detailRow("ID Rekam Medis", p.idPasienRs),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        child: Column(
+                          children: [
+                            _detailRow("Jenis Kelamin", p.jenisKelamin),
+                            const SizedBox(height: 8),
+                            _detailRow("Tanggal lahir", p.tanggalLahir),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             ),
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
 
-          // TOMBOL UPLOAD
+          // TOMBOL UPLOAD DIRAMPINGKAN
           SizedBox(
             width: double.infinity,
-            height: 55,
+            height: 48,
             child: ElevatedButton.icon(
               onPressed: () => controller.openUploadPage(),
-              icon: const Icon(Icons.cloud_upload_rounded, color: Colors.white),
+              icon: const Icon(Icons.cloud_upload_rounded,
+                  color: Colors.white, size: 18),
               label: const PoppinsTextView(
                   value: "Upload MRI Baru",
                   color: Colors.white,
-                  size: 16,
+                  size: 14,
                   fontWeight: FontWeight.w600),
               style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    const Color(0xFF384674), // Warna khusus tombol upload
+                backgroundColor: const Color(0xFF384674),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                    borderRadius: BorderRadius.circular(10)),
               ),
             ),
           ),
 
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
 
           // BAGIAN RIWAYAT SCAN MRI
           Row(
@@ -436,66 +435,116 @@ class RadiologPatientView extends GetView<RadiologController> {
             children: [
               const PoppinsTextView(
                 value: "Riwayat Scan MRI",
-                size: 18,
+                size: 14,
                 fontWeight: FontWeight.bold,
                 color: Colors.black87,
               ),
-              Obx(() => Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey.shade300),
+              Row(children: [
+                Obx(() {
+                  bool isFiltered = controller.selectedDateFilter.value != null;
+
+                  return IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: Icon(
+                      isFiltered
+                          ? Icons.event_busy
+                          : Icons.calendar_month_outlined,
+                      color: isFiltered ? Colors.redAccent : Colors.grey,
+                      size: 20,
                     ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: controller.isSortNewest.value
-                            ? 'Terbaru'
-                            : 'Terlama',
-                        icon: const Icon(Icons.sort,
-                            size: 16, color: Colors.grey),
-                        items: ['Terbaru', 'Terlama'].map((String value) {
-                          return DropdownMenuItem<String>(
-                            value: value,
-                            child: PoppinsTextView(
-                              value: value,
-                              size: 12,
-                              color: Colors.black87,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (newValue) {
-                          if (newValue != null) {
-                            controller.sortHistory(newValue);
-                          }
-                        },
+                    tooltip: isFiltered
+                        ? "Hapus Filter Tanggal"
+                        : "Filter berdasarkan Tanggal",
+                    onPressed: () async {
+                      if (isFiltered) {
+                        controller.clearDateFilter();
+                      } else {
+                        DateTime? pickedDate = await showDatePicker(
+                          context: Get.context!,
+                          initialDate: DateTime.now(),
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime.now(),
+                          builder: (context, child) {
+                            return Theme(
+                              data: Theme.of(context).copyWith(
+                                colorScheme: ColorScheme.light(
+                                  primary: AppColors.blueDark,
+                                  onPrimary: Colors.white,
+                                  onSurface: Colors.black87,
+                                ),
+                              ),
+                              child: child!,
+                            );
+                          },
+                        );
+
+                        if (pickedDate != null) {
+                          controller.filterHistoryByDate(pickedDate);
+                        }
+                      }
+                    },
+                  );
+                }),
+                const SizedBox(width: 12),
+                Obx(() => Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 0),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: Colors.grey.shade300),
                       ),
-                    ),
-                  )),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: controller.isSortNewest.value
+                              ? 'Terbaru'
+                              : 'Terlama',
+                          icon: const Icon(Icons.sort,
+                              size: 14, color: Colors.grey),
+                          items: ['Terbaru', 'Terlama'].map((String value) {
+                            return DropdownMenuItem<String>(
+                              value: value,
+                              child: PoppinsTextView(
+                                value: value,
+                                size: 11,
+                                color: Colors.black87,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (newValue) {
+                            if (newValue != null) {
+                              controller.sortHistory(newValue);
+                            }
+                          },
+                        ),
+                      ),
+                    )),
+              ])
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
           Obx(() {
             final history = controller.sortedPatientHistory;
             if (history.isEmpty) {
               return Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(40),
+                padding: const EdgeInsets.all(30),
                 decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: Colors.grey.shade200)),
                 child: Center(
                   child: Column(
                     children: [
                       Icon(Icons.history_toggle_off,
-                          size: 48, color: Colors.grey.shade400),
-                      const SizedBox(height: 16),
+                          size: 36, color: Colors.grey.shade400),
+                      const SizedBox(height: 12),
                       PoppinsTextView(
                           value: "Belum ada riwayat scan MRI",
+                          size: 12,
                           color: Colors.grey.shade600),
                     ],
                   ),
@@ -507,7 +556,7 @@ class RadiologPatientView extends GetView<RadiologController> {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: history.length,
-              separatorBuilder: (c, i) => const SizedBox(height: 12),
+              separatorBuilder: (c, i) => const SizedBox(height: 10),
               itemBuilder: (context, index) {
                 final scan = history[index];
                 String hasil = scan['hasil_prediksi'].toString().toLowerCase();
@@ -529,12 +578,12 @@ class RadiologPatientView extends GetView<RadiologController> {
                 return InkWell(
                   onTap: () =>
                       controller.openAnalysisResult(scan['id'].toString()),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                   child: Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: Colors.grey.shade200),
                       boxShadow: [
                         BoxShadow(
@@ -546,15 +595,15 @@ class RadiologPatientView extends GetView<RadiologController> {
                     child: Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: iconBgColor, // Merah sangat muda
-                            borderRadius: BorderRadius.circular(10),
+                            color: iconBgColor,
+                            borderRadius: BorderRadius.circular(8),
                           ),
                           child: Icon(Icons.document_scanner_outlined,
-                              color: iconColor),
+                              color: iconColor, size: 18),
                         ),
-                        const SizedBox(width: 16),
+                        const SizedBox(width: 12),
 
                         // Info Tengah
                         Expanded(
@@ -564,13 +613,13 @@ class RadiologPatientView extends GetView<RadiologController> {
                               PoppinsTextView(
                                 value: scan['jenis_mri'] ?? "MRI Scan",
                                 fontWeight: FontWeight.bold,
-                                size: 15,
+                                size: 13,
                                 color: Colors.black87,
                               ),
-                              const SizedBox(height: 4),
+                              const SizedBox(height: 2),
                               PoppinsTextView(
                                 value: "Tanggal: ${scan['tanggal_periksa']}",
-                                size: 12,
+                                size: 11,
                                 color: Colors.grey.shade600,
                               ),
                             ],
@@ -583,21 +632,21 @@ class RadiologPatientView extends GetView<RadiologController> {
                           children: [
                             PoppinsTextView(
                               value: "Hasil Prediksi",
-                              size: 10,
+                              size: 9,
                               color: Colors.grey.shade500,
                             ),
                             const SizedBox(height: 4),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 6),
+                                  horizontal: 12, vertical: 4),
                               decoration: BoxDecoration(
                                 color: badgeColor,
-                                borderRadius: BorderRadius.circular(20),
+                                borderRadius: BorderRadius.circular(12),
                               ),
                               child: PoppinsTextView(
                                 value: scan['hasil_prediksi'],
                                 color: Colors.white,
-                                size: 12,
+                                size: 11,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -615,32 +664,33 @@ class RadiologPatientView extends GetView<RadiologController> {
     );
   }
 
-  // --- 3. HALAMAN UPLOAD FORM ---
-  Widget _buildUploadFormView() {
+  // --- 3. HALAMAN UPLOAD FORM (DIPERBAIKI) ---
+  Widget _buildUploadFormView(bool isMobile) {
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TextButton.icon(
             onPressed: () => controller.backToPreviousStep(),
-            icon: const Icon(Icons.arrow_back, color: Colors.grey),
+            icon: const Icon(Icons.arrow_back, color: Colors.grey, size: 16),
             label: const PoppinsTextView(
                 value: "Kembali ke Detail Pasien",
                 color: Colors.grey,
-                size: 14),
+                size: 12),
           ),
           const SizedBox(height: 10),
           Center(
             child: Container(
-              width: 600,
-              padding: const EdgeInsets.all(30),
+              // RESPONSIF: Lebar penuh di HP, dibatasi 800px di PC
+              width: isMobile ? double.infinity : 800,
+              padding: EdgeInsets.all(isMobile ? 20 : 24),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 20)
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 15)
                 ],
               ),
               child: Column(
@@ -648,134 +698,81 @@ class RadiologPatientView extends GetView<RadiologController> {
                 children: [
                   PoppinsTextView(
                       value: "Formulir Upload MRI",
-                      size: 20,
+                      size: 16,
                       fontWeight: FontWeight.bold,
                       color: AppColors.blueDark),
-                  const SizedBox(height: 8),
-                  PoppinsTextView(
+                  const SizedBox(height: 4),
+                  const PoppinsTextView(
                       value:
-                          "Pastikan file MRI dalam format file yang didukung.",
-                      size: 13,
-                      color: Colors.grey),
-                  const Divider(height: 40),
-                  _readOnlyField("Nama Pasien", controller.namaPasienC),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                          child: _readOnlyField(
-                              "ID Rekam Medis", controller.idRmC)),
-                      const SizedBox(width: 16),
-                      Expanded(
-                          child: _readOnlyField(
-                              "Tanggal Lahir", controller.tglLahirC)),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  PoppinsTextView(
-                      value: "Jenis MRI",
-                      size: 12,
-                      color: AppColors.blueDark,
-                      fontWeight: FontWeight.bold),
-                  const SizedBox(height: 8),
-                  Obx(() => Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(8)),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: controller.selectedJenisMRI.value,
-                            isExpanded: true,
-                            items: [
-                              "T1 Weighted",
-                              "T2 Weighted",
-                              "FLAIR",
-                              "Diffusion Weighted"
-                            ]
-                                .map((e) => DropdownMenuItem(
-                                    value: e,
-                                    child: PoppinsTextView(
-                                        value: e,
-                                        size: 13,
-                                        color: Colors.black87)))
-                                .toList(),
-                            onChanged: (val) =>
-                                controller.selectedJenisMRI.value = val!,
+                          "Pastikan upload 1 file .zip yang di dalamnya berisi 4 modalitas (.nii.gz).",
+                      size: 11,
+                      color: Colors.redAccent),
+                  const Divider(height: 30),
+                  if (isMobile) ...[
+                    // TAMPILAN MOBILE (HP)
+                    _readOnlyField("Nama Pasien", controller.namaPasienC),
+                    const SizedBox(height: 12),
+                    _readOnlyField("ID Rekam Medis", controller.idRmC),
+                    const SizedBox(height: 12),
+                    _readOnlyField("Tanggal Lahir", controller.tglLahirC),
+                    const SizedBox(height: 16),
+                    _buildJenisPemeriksaan(),
+                    const SizedBox(height: 16),
+                    _buildCatatanKlinis(),
+                    const SizedBox(height: 20),
+                    _buildUploadBox(),
+                  ] else ...[
+                    // TAMPILAN DESKTOP (Bagi 2 Kolom)
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // KOLOM KIRI
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _readOnlyField(
+                                  "Nama Pasien", controller.namaPasienC),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Expanded(
+                                      child: _readOnlyField(
+                                          "ID Rekam Medis", controller.idRmC)),
+                                  const SizedBox(
+                                      width:
+                                          12), // Tambah jarak agar tidak nempel
+                                  Expanded(
+                                      child: _readOnlyField("Tanggal Lahir",
+                                          controller.tglLahirC)),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              _buildCatatanKlinis(),
+                            ],
                           ),
                         ),
-                      )),
-                  const SizedBox(height: 16),
-                  PoppinsTextView(
-                      value: "Catatan Klinis (Opsional)",
-                      size: 12,
-                      color: AppColors.blueDark,
-                      fontWeight: FontWeight.bold),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: controller.catatanC,
-                    maxLines: 3,
-                    decoration: InputDecoration(
-                      hintText: "Contoh: Keluhan nyeri kepala...",
-                      hintStyle: const TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 13,
-                          color: Colors.grey),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: Colors.grey.shade300)),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  PoppinsTextView(
-                      value: "File Scan MRI",
-                      size: 12,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.blueDark),
-                  const SizedBox(height: 8),
-                  InkWell(
-                    onTap: () => controller.pickMRIFile(),
-                    child: Container(
-                      height: 150,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                            color: Colors.blue.shade200,
-                            style: BorderStyle.solid),
-                      ),
-                      child: Obx(() => Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                        const SizedBox(
+                            width: 24), // Jarak antara kolom kiri & kanan
+
+                        // KOLOM KANAN
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(
-                                controller.selectedFile.value == null
-                                    ? Icons.cloud_upload_rounded
-                                    : Icons.check_circle,
-                                size: 40,
-                                color: controller.selectedFile.value == null
-                                    ? Colors.blue
-                                    : Colors.green,
-                              ),
-                              const SizedBox(height: 10),
-                              PoppinsTextView(
-                                value: controller.selectedFile.value == null
-                                    ? "Klik untuk Pilih File"
-                                    : controller.selectedFileName.value,
-                                fontWeight: FontWeight.bold,
-                                size: 13,
-                                color: controller.selectedFile.value == null
-                                    ? Colors.blue
-                                    : Colors.green,
-                              ),
+                              _buildJenisPemeriksaan(),
+                              const SizedBox(height: 12),
+                              _buildUploadBox(desktopHeight: 145),
                             ],
-                          )),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 30),
+                  ],
+                  const SizedBox(height: 24),
                   SizedBox(
                     width: double.infinity,
-                    height: 50,
+                    height: 45, // Dirampingkan
                     child: Obx(() => ElevatedButton(
                           onPressed: controller.isLoading.value
                               ? null
@@ -783,14 +780,17 @@ class RadiologPatientView extends GetView<RadiologController> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.blueDark,
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
+                                borderRadius: BorderRadius.circular(10)),
                           ),
                           child: controller.isLoading.value
-                              ? const CircularProgressIndicator(
-                                  color: Colors.white)
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                      color: Colors.white, strokeWidth: 2))
                               : const PoppinsTextView(
                                   value: "Analisa & Simpan",
-                                  size: 16,
+                                  size: 14,
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold),
                         )),
@@ -804,11 +804,140 @@ class RadiologPatientView extends GetView<RadiologController> {
     );
   }
 
+  Widget _buildJenisPemeriksaan() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        PoppinsTextView(
+          value: "Jenis Pemeriksaan",
+          size: 12,
+          color: AppColors.blueDark,
+          fontWeight: FontWeight.bold,
+        ),
+        const SizedBox(height: 6),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade100,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const PoppinsTextView(
+            value: "MRI Otak (4 Modalitas ZIP)",
+            size: 12,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCatatanKlinis() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        PoppinsTextView(
+          value: "Catatan Klinis (Opsional)",
+          size: 12,
+          color: AppColors.blueDark,
+          fontWeight: FontWeight.bold,
+        ),
+        const SizedBox(height: 6),
+        TextField(
+          controller: controller.catatanC,
+          maxLines: 4,
+          style: const TextStyle(fontFamily: 'Poppins', fontSize: 12),
+          decoration: InputDecoration(
+            hintText: "Contoh: Keluhan nyeri kepala...",
+            hintStyle: const TextStyle(
+                fontFamily: 'Poppins', fontSize: 12, color: Colors.grey),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+            contentPadding: const EdgeInsets.all(12),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildUploadBox({double desktopHeight = 120}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        PoppinsTextView(
+          value: "File Scan MRI (.zip)",
+          size: 12,
+          fontWeight: FontWeight.bold,
+          color: AppColors.blueDark,
+        ),
+        const SizedBox(height: 6),
+        InkWell(
+          onTap: () => controller.pickMRIFile(),
+          child: Container(
+            height: desktopHeight,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                  color: Colors.blue.shade200, style: BorderStyle.solid),
+            ),
+            child: Obx(() => Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      controller.selectedFile.value == null
+                          ? Icons.folder_zip_rounded
+                          : Icons.check_circle,
+                      size: 36,
+                      color: controller.selectedFile.value == null
+                          ? Colors.blue
+                          : Colors.green,
+                    ),
+                    const SizedBox(height: 10),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        controller.selectedFile.value == null
+                            ? "Klik untuk Pilih File Zip"
+                            : controller.selectedFileName.value,
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: controller.selectedFile.value == null
+                              ? Colors.blue
+                              : Colors.green,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                )),
+          ),
+        ),
+      ],
+    );
+  }
+
   // --- WIDGET HELPER ---
-  Widget _buildStatusBadge(String status) {
-    bool isActive = status == "Aktif";
+  Widget _headerTabel(String title) {
+    return PoppinsTextView(
+        value: title,
+        size: 11,
+        fontWeight: FontWeight.bold,
+        color: Colors.grey);
+  }
+
+  Widget _buildStatusBadge(String status, {bool alignLeft = false}) {
+    bool isActive = status.toLowerCase() == "aktif";
     return Align(
-      alignment: Alignment.centerRight, // Dipindah ke kanan agar rapi
+      alignment: alignLeft ? Alignment.centerLeft : Alignment.centerRight,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
@@ -827,18 +956,20 @@ class RadiologPatientView extends GetView<RadiologController> {
     );
   }
 
+  // FLEX diimplementasi agar label dan isian teks tidak overflow di HP
   Widget _detailRow(String label, String value) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-            width: 120,
-            child: PoppinsTextView(value: label, size: 13, color: Colors.grey)),
-        const PoppinsTextView(value: ": ", size: 13, color: Colors.grey),
         Expanded(
+            flex: 2,
+            child: PoppinsTextView(value: label, size: 12, color: Colors.grey)),
+        const PoppinsTextView(value: ": ", size: 12, color: Colors.grey),
+        Expanded(
+            flex: 3,
             child: PoppinsTextView(
                 value: value,
-                size: 13,
+                size: 12,
                 fontWeight: FontWeight.w600,
                 color: Colors.black87)),
       ],
@@ -858,7 +989,7 @@ class RadiologPatientView extends GetView<RadiologController> {
         TextField(
           controller: controller,
           readOnly: true,
-          style: const TextStyle(fontFamily: 'Poppins', fontSize: 14),
+          style: const TextStyle(fontFamily: 'Poppins', fontSize: 12),
           decoration: InputDecoration(
             filled: true,
             fillColor: Colors.grey.shade100,
@@ -866,7 +997,7 @@ class RadiologPatientView extends GetView<RadiologController> {
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide.none),
             contentPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           ),
         ),
       ],

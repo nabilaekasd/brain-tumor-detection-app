@@ -1,4 +1,4 @@
-import 'package:axon_vision/controllers/dokter_controller.dart';
+import 'package:axon_vision/controllers/dokter_controller.dart'; // DIUBAH
 import 'package:axon_vision/pages/detail_analisis_page.dart';
 import 'package:axon_vision/pages/global_widgets/text_fonts/poppins_text_view.dart';
 import 'package:axon_vision/utils/app_colors.dart';
@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 class DokterPatientView extends GetView<DokterController> {
+  // DIUBAH
   const DokterPatientView({super.key});
 
   @override
@@ -16,44 +17,45 @@ class DokterPatientView extends GetView<DokterController> {
       }
     });
 
-    return Obx(() {
-      switch (controller.patientViewStep.value) {
-        case 0:
-          return _buildPatientListView(context);
-        case 1:
-          return _buildPatientDetailView();
-        case 2:
-          // Karena form upload dihapus, indeks ke-2 langsung ke Hasil Analisis
-          return DetailAnalisisPage(
-            analysisId: controller.selectedAnalysisId.value,
-            role: "DOKTER", // 🔥 Mengirimkan identitas DOKTER
-          );
-        default:
-          return _buildPatientListView(context);
-      }
-    });
+    // BUNGKUS DENGAN LAYOUT BUILDER UNTUK RESPONSIVITAS TOTAL
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        bool isMobile = constraints.maxWidth < 650;
+
+        return Obx(() {
+          // STEP DISESUAIKAN: HANYA 3 STEP UNTUK DOKTER
+          switch (controller.patientViewStep.value) {
+            case 0:
+              return _buildPatientListView(context, isMobile);
+            case 1:
+              return _buildPatientDetailView(isMobile);
+            case 2:
+              return DetailAnalisisPage(
+                analysisId: controller.selectedAnalysisId.value,
+                role: "DOKTER", // DIUBAH MENJADI DOKTER
+              );
+            default:
+              return _buildPatientListView(context, isMobile);
+          }
+        });
+      },
+    );
   }
 
   // --- 1. HALAMAN DAFTAR PASIEN ---
-  Widget _buildPatientListView(BuildContext context) {
+  Widget _buildPatientListView(BuildContext context, bool isMobile) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        PoppinsTextView(
-          value: "Data Pasien",
-          size: 24,
-          fontWeight: FontWeight.bold,
-          color: AppColors.blueDark,
-        ),
-        const SizedBox(height: 8),
         const PoppinsTextView(
-          value: "Pilih pasien untuk melihat detail dan riwayat MRI.",
-          size: 14,
+          value:
+              "Pilih pasien untuk melihat detail atau riwayat analisis AI.", // TEKS DIUBAH
+          size: 12,
           color: Colors.grey,
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
 
-        // Search Bar
+        // Search Bar & Refresh
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
@@ -65,10 +67,10 @@ class DokterPatientView extends GetView<DokterController> {
             children: [
               Expanded(
                 child: SizedBox(
-                  height: 40,
+                  height: 38,
                   child: TextField(
                     onChanged: (val) => controller.searchPatient(val),
-                    style: const TextStyle(fontFamily: 'Poppins', fontSize: 13),
+                    style: const TextStyle(fontFamily: 'Poppins', fontSize: 12),
                     decoration: InputDecoration(
                       prefixIcon: const Icon(Icons.search,
                           color: Colors.grey, size: 18),
@@ -88,10 +90,10 @@ class DokterPatientView extends GetView<DokterController> {
               const SizedBox(width: 12),
               ElevatedButton.icon(
                 onPressed: () => controller.fetchPatients(),
-                icon: const Icon(Icons.refresh, color: Colors.white, size: 18),
+                icon: const Icon(Icons.refresh, color: Colors.white, size: 16),
                 label: const PoppinsTextView(
                   value: "Refresh",
-                  size: 13,
+                  size: 12,
                   color: Colors.white,
                   fontWeight: FontWeight.w600,
                 ),
@@ -106,7 +108,7 @@ class DokterPatientView extends GetView<DokterController> {
             ],
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
 
         // Tabel Data
         Expanded(
@@ -138,51 +140,17 @@ class DokterPatientView extends GetView<DokterController> {
                     border:
                         Border(bottom: BorderSide(color: Color(0xffEEEEEE))),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
+                      Expanded(flex: 2, child: _headerTabel("ID REKAM MEDIS")),
+                      Expanded(flex: 3, child: _headerTabel("NAMA PASIEN")),
+                      if (!isMobile)
+                        Expanded(flex: 2, child: _headerTabel("GENDER")),
+                      if (!isMobile)
+                        Expanded(flex: 2, child: _headerTabel("TGL LAHIR")),
+                      Expanded(flex: 2, child: _headerTabel("STATUS")),
                       Expanded(
-                          flex: 2,
-                          child: PoppinsTextView(
-                              value: "ID REKAM MEDIS",
-                              size: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey)),
-                      Expanded(
-                          flex: 3,
-                          child: PoppinsTextView(
-                              value: "NAMA PASIEN",
-                              size: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey)),
-                      Expanded(
-                          flex: 2,
-                          child: PoppinsTextView(
-                              value: "GENDER",
-                              size: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey)),
-                      Expanded(
-                          flex: 2,
-                          child: PoppinsTextView(
-                              value: "TGL LAHIR",
-                              size: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey)),
-                      Expanded(
-                          flex: 2,
-                          child: PoppinsTextView(
-                              value: "STATUS",
-                              size: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey)),
-                      Expanded(
-                          flex: 1,
-                          child: PoppinsTextView(
-                              value: "AKSI",
-                              size: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey,
-                              textAlign: TextAlign.center)),
+                          flex: 1, child: Center(child: _headerTabel("AKSI"))),
                     ],
                   ),
                 ),
@@ -197,50 +165,53 @@ class DokterPatientView extends GetView<DokterController> {
                       return const Center(
                           child: PoppinsTextView(
                               value: "Data tidak ditemukan",
-                              size: 13,
+                              size: 12,
                               color: Colors.grey));
                     }
 
                     return ListView.separated(
                       padding: EdgeInsets.zero,
-                      itemCount: controller.filteredPatientList.length,
+                      itemCount: controller.currentPatients.length,
                       separatorBuilder: (c, i) =>
                           const Divider(height: 1, color: Color(0xffEEEEEE)),
                       itemBuilder: (context, index) {
                         final p = controller.currentPatients[index];
                         return Padding(
                           padding: const EdgeInsets.symmetric(
-                              vertical: 12, horizontal: 16),
+                              vertical: 10, horizontal: 16),
                           child: Row(
                             children: [
                               Expanded(
                                   flex: 2,
                                   child: PoppinsTextView(
                                       value: p.idPasienRs,
-                                      size: 13,
+                                      size: 12,
                                       fontWeight: FontWeight.bold,
                                       color: AppColors.blueDark)),
                               Expanded(
                                   flex: 3,
                                   child: PoppinsTextView(
                                       value: p.nama,
-                                      size: 13,
+                                      size: 12,
                                       fontWeight: FontWeight.w600)),
+                              if (!isMobile)
+                                Expanded(
+                                    flex: 2,
+                                    child: PoppinsTextView(
+                                        value: p.jenisKelamin,
+                                        size: 12,
+                                        color: Colors.black87)),
+                              if (!isMobile)
+                                Expanded(
+                                    flex: 2,
+                                    child: PoppinsTextView(
+                                        value: p.tanggalLahir,
+                                        size: 12,
+                                        color: Colors.grey)),
                               Expanded(
                                   flex: 2,
-                                  child: PoppinsTextView(
-                                      value: p.jenisKelamin,
-                                      size: 13,
-                                      color: Colors.black87)),
-                              Expanded(
-                                  flex: 2,
-                                  child: PoppinsTextView(
-                                      value: p.tanggalLahir,
-                                      size: 13,
-                                      color: Colors.grey)),
-                              Expanded(
-                                  flex: 2,
-                                  child: _buildStatusBadge(p.statusPasien)),
+                                  child: _buildStatusBadge(p.statusPasien,
+                                      alignLeft: true)),
                               Expanded(
                                 flex: 1,
                                 child: Center(
@@ -249,7 +220,7 @@ class DokterPatientView extends GetView<DokterController> {
                                     padding: EdgeInsets.zero,
                                     icon: const Icon(Icons.description_outlined,
                                         color: Colors.blue, size: 18),
-                                    tooltip: "Lihat Detail",
+                                    tooltip: "Lihat Detail", // TOOLTIP DIUBAH
                                     onPressed: () =>
                                         controller.openPatientDetail(p),
                                   ),
@@ -266,7 +237,7 @@ class DokterPatientView extends GetView<DokterController> {
                 // Pagination
                 Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   decoration: BoxDecoration(
                     color: const Color(0xffF9FAFB),
                     border: Border(
@@ -281,29 +252,33 @@ class DokterPatientView extends GetView<DokterController> {
                       Obx(() => PoppinsTextView(
                             value:
                                 "Halaman ${controller.patientCurrentPage} dari ${controller.totalPatientPages} (Total ${controller.filteredPatientList.length})",
-                            size: 12,
+                            size: 11,
                             color: Colors.grey,
                           )),
                       Row(
                         children: [
                           IconButton(
+                              constraints: const BoxConstraints(),
+                              padding: const EdgeInsets.all(4),
                               onPressed: () => controller.prevPatientPage(),
                               icon: const Icon(Icons.chevron_left,
-                                  size: 20, color: Colors.grey)),
+                                  size: 18, color: Colors.grey)),
                           Container(
-                            padding: const EdgeInsets.all(8),
+                            padding: const EdgeInsets.all(6),
                             decoration: BoxDecoration(
                                 color: AppColors.blueDark,
                                 shape: BoxShape.circle),
                             child: Obx(() => PoppinsTextView(
                                 value: "${controller.patientCurrentPage}",
-                                size: 12,
+                                size: 11,
                                 color: Colors.white)),
                           ),
                           IconButton(
+                              constraints: const BoxConstraints(),
+                              padding: const EdgeInsets.all(4),
                               onPressed: () => controller.nextPatientPage(),
                               icon: const Icon(Icons.chevron_right,
-                                  size: 20, color: Colors.grey))
+                                  size: 18, color: Colors.grey))
                         ],
                       )
                     ],
@@ -317,32 +292,31 @@ class DokterPatientView extends GetView<DokterController> {
     );
   }
 
-  // --- 2. HALAMAN DETAIL PASIEN (TANPA TOMBOL UPLOAD) ---
-  Widget _buildPatientDetailView() {
+  // --- 2. HALAMAN DETAIL PASIEN (TANPA UPLOAD) ---
+  Widget _buildPatientDetailView(bool isMobile) {
     final p = controller.selectedPatient.value!;
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Tombol Kembali
           TextButton.icon(
             onPressed: () => controller.backToPreviousStep(),
-            icon: const Icon(Icons.arrow_back, color: Colors.grey, size: 20),
+            icon: const Icon(Icons.arrow_back, color: Colors.grey, size: 16),
             label: const PoppinsTextView(
                 value: "Kembali ke Daftar Pasien",
-                size: 14,
+                size: 12,
                 color: Colors.grey),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
           // KARTU DETAIL PASIEN
           Container(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.all(isMobile ? 16 : 20),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(12),
               border:
-                  Border(left: BorderSide(color: AppColors.blueDark, width: 6)),
+                  Border(left: BorderSide(color: AppColors.blueDark, width: 5)),
               boxShadow: [
                 BoxShadow(
                     color: Colors.black.withValues(alpha: 0.05),
@@ -358,120 +332,197 @@ class DokterPatientView extends GetView<DokterController> {
                   children: [
                     PoppinsTextView(
                         value: "Detail Pasien",
-                        size: 18,
+                        size: 14,
                         fontWeight: FontWeight.bold,
                         color: AppColors.blueDark),
                     _buildStatusBadge(p.statusPasien),
                   ],
                 ),
-                const SizedBox(height: 20),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    CircleAvatar(
-                      radius: 35,
-                      backgroundColor: Colors.blue.shade50,
-                      child: PoppinsTextView(
+                const SizedBox(height: 16),
+
+                // RESPONSIF: Baris (PC) atau Bertumpuk (Mobile)
+                if (isMobile)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      CircleAvatar(
+                        radius: 35,
+                        backgroundColor: Colors.blue.shade50,
+                        child: PoppinsTextView(
                           value: p.nama[0],
                           size: 28,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.blueDark),
-                    ),
-                    const SizedBox(width: 24),
-                    Expanded(
-                      child: Column(
-                        children: [
-                          _detailRow("Nama Lengkap", p.nama),
-                          const SizedBox(height: 12),
-                          _detailRow("ID Rekam Medis", p.idPasienRs),
-                        ],
+                          color: AppColors.blueDark,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 24),
-                    Expanded(
-                      child: Column(
-                        children: [
-                          _detailRow("Jenis Kelamin", p.jenisKelamin),
-                          const SizedBox(height: 12),
-                          _detailRow("Tanggal lahir", p.tanggalLahir),
-                        ],
+                      const SizedBox(height: 20),
+                      _detailRow("Nama Lengkap", p.nama),
+                      const SizedBox(height: 8),
+                      _detailRow("ID Rekam Medis", p.idPasienRs),
+                      const SizedBox(height: 8),
+                      _detailRow("Jenis Kelamin", p.jenisKelamin),
+                      const SizedBox(height: 8),
+                      _detailRow("Tanggal Lahir", p.tanggalLahir),
+                    ],
+                  )
+                else
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      CircleAvatar(
+                        radius: 30,
+                        backgroundColor: Colors.blue.shade50,
+                        child: PoppinsTextView(
+                            value: p.nama[0],
+                            size: 24,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.blueDark),
                       ),
-                    ),
-                  ],
-                ),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        child: Column(
+                          children: [
+                            _detailRow("Nama Lengkap", p.nama),
+                            const SizedBox(height: 8),
+                            _detailRow("ID Rekam Medis", p.idPasienRs),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        child: Column(
+                          children: [
+                            _detailRow("Jenis Kelamin", p.jenisKelamin),
+                            const SizedBox(height: 8),
+                            _detailRow("Tanggal lahir", p.tanggalLahir),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             ),
           ),
 
-          // 🔥 TOMBOL UPLOAD DIHAPUS DI SINI 🔥
-          const SizedBox(height: 32),
+          // TOMBOL UPLOAD DIHAPUS DARI SINI UNTUK DOKTER
+          const SizedBox(height: 24),
 
           // BAGIAN RIWAYAT SCAN MRI
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const PoppinsTextView(
-                value: "Riwayat Scan MRI",
-                size: 18,
+                value: "Riwayat Analisis MRI", // TEKS DIUBAH
+                size: 14,
                 fontWeight: FontWeight.bold,
                 color: Colors.black87,
               ),
-              Obx(() => Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey.shade300),
+              Row(children: [
+                Obx(() {
+                  bool isFiltered = controller.selectedDateFilter.value != null;
+
+                  return IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: Icon(
+                      isFiltered
+                          ? Icons.event_busy
+                          : Icons.calendar_month_outlined,
+                      color: isFiltered ? Colors.redAccent : Colors.grey,
+                      size: 20,
                     ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: controller.isSortNewest.value
-                            ? 'Terbaru'
-                            : 'Terlama',
-                        icon: const Icon(Icons.sort,
-                            size: 16, color: Colors.grey),
-                        items: ['Terbaru', 'Terlama'].map((String value) {
-                          return DropdownMenuItem<String>(
-                            value: value,
-                            child: PoppinsTextView(
-                              value: value,
-                              size: 12,
-                              color: Colors.black87,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (newValue) {
-                          if (newValue != null) {
-                            controller.sortHistory(newValue);
-                          }
-                        },
+                    tooltip: isFiltered
+                        ? "Hapus Filter Tanggal"
+                        : "Filter berdasarkan Tanggal",
+                    onPressed: () async {
+                      if (isFiltered) {
+                        controller.clearDateFilter();
+                      } else {
+                        DateTime? pickedDate = await showDatePicker(
+                          context: Get.context!,
+                          initialDate: DateTime.now(),
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime.now(),
+                          builder: (context, child) {
+                            return Theme(
+                              data: Theme.of(context).copyWith(
+                                colorScheme: ColorScheme.light(
+                                  primary: AppColors.blueDark,
+                                  onPrimary: Colors.white,
+                                  onSurface: Colors.black87,
+                                ),
+                              ),
+                              child: child!,
+                            );
+                          },
+                        );
+
+                        if (pickedDate != null) {
+                          controller.filterHistoryByDate(pickedDate);
+                        }
+                      }
+                    },
+                  );
+                }),
+                const SizedBox(width: 12),
+                Obx(() => Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 0),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: Colors.grey.shade300),
                       ),
-                    ),
-                  )),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: controller.isSortNewest.value
+                              ? 'Terbaru'
+                              : 'Terlama',
+                          icon: const Icon(Icons.sort,
+                              size: 14, color: Colors.grey),
+                          items: ['Terbaru', 'Terlama'].map((String value) {
+                            return DropdownMenuItem<String>(
+                              value: value,
+                              child: PoppinsTextView(
+                                value: value,
+                                size: 11,
+                                color: Colors.black87,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (newValue) {
+                            if (newValue != null) {
+                              controller.sortHistory(newValue);
+                            }
+                          },
+                        ),
+                      ),
+                    )),
+              ])
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
           Obx(() {
             final history = controller.sortedPatientHistory;
             if (history.isEmpty) {
               return Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(40),
+                padding: const EdgeInsets.all(30),
                 decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: Colors.grey.shade200)),
                 child: Center(
                   child: Column(
                     children: [
                       Icon(Icons.history_toggle_off,
-                          size: 48, color: Colors.grey.shade400),
-                      const SizedBox(height: 16),
+                          size: 36, color: Colors.grey.shade400),
+                      const SizedBox(height: 12),
                       PoppinsTextView(
                           value: "Belum ada riwayat scan MRI",
+                          size: 12,
                           color: Colors.grey.shade600),
                     ],
                   ),
@@ -483,7 +534,7 @@ class DokterPatientView extends GetView<DokterController> {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: history.length,
-              separatorBuilder: (c, i) => const SizedBox(height: 12),
+              separatorBuilder: (c, i) => const SizedBox(height: 10),
               itemBuilder: (context, index) {
                 final scan = history[index];
                 String hasil = scan['hasil_prediksi'].toString().toLowerCase();
@@ -505,12 +556,12 @@ class DokterPatientView extends GetView<DokterController> {
                 return InkWell(
                   onTap: () =>
                       controller.openAnalysisResult(scan['id'].toString()),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                   child: Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: Colors.grey.shade200),
                       boxShadow: [
                         BoxShadow(
@@ -522,15 +573,17 @@ class DokterPatientView extends GetView<DokterController> {
                     child: Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
                             color: iconBgColor,
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                           child: Icon(Icons.document_scanner_outlined,
-                              color: iconColor),
+                              color: iconColor, size: 18),
                         ),
-                        const SizedBox(width: 16),
+                        const SizedBox(width: 12),
+
+                        // Info Tengah
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -538,38 +591,40 @@ class DokterPatientView extends GetView<DokterController> {
                               PoppinsTextView(
                                 value: scan['jenis_mri'] ?? "MRI Scan",
                                 fontWeight: FontWeight.bold,
-                                size: 15,
+                                size: 13,
                                 color: Colors.black87,
                               ),
-                              const SizedBox(height: 4),
+                              const SizedBox(height: 2),
                               PoppinsTextView(
                                 value: "Tanggal: ${scan['tanggal_periksa']}",
-                                size: 12,
+                                size: 11,
                                 color: Colors.grey.shade600,
                               ),
                             ],
                           ),
                         ),
+
+                        // Badge Prediksi Kanan
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             PoppinsTextView(
                               value: "Hasil Prediksi",
-                              size: 10,
+                              size: 9,
                               color: Colors.grey.shade500,
                             ),
                             const SizedBox(height: 4),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 6),
+                                  horizontal: 12, vertical: 4),
                               decoration: BoxDecoration(
                                 color: badgeColor,
-                                borderRadius: BorderRadius.circular(20),
+                                borderRadius: BorderRadius.circular(12),
                               ),
                               child: PoppinsTextView(
                                 value: scan['hasil_prediksi'],
                                 color: Colors.white,
-                                size: 12,
+                                size: 11,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -588,10 +643,18 @@ class DokterPatientView extends GetView<DokterController> {
   }
 
   // --- WIDGET HELPER ---
-  Widget _buildStatusBadge(String status) {
-    bool isActive = status == "Aktif";
+  Widget _headerTabel(String title) {
+    return PoppinsTextView(
+        value: title,
+        size: 11,
+        fontWeight: FontWeight.bold,
+        color: Colors.grey);
+  }
+
+  Widget _buildStatusBadge(String status, {bool alignLeft = false}) {
+    bool isActive = status.toLowerCase() == "aktif";
     return Align(
-      alignment: Alignment.centerRight,
+      alignment: alignLeft ? Alignment.centerLeft : Alignment.centerRight,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
@@ -610,18 +673,20 @@ class DokterPatientView extends GetView<DokterController> {
     );
   }
 
+  // FLEX diimplementasi agar label dan isian teks tidak overflow di HP
   Widget _detailRow(String label, String value) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-            width: 120,
-            child: PoppinsTextView(value: label, size: 13, color: Colors.grey)),
-        const PoppinsTextView(value: ": ", size: 13, color: Colors.grey),
         Expanded(
+            flex: 2,
+            child: PoppinsTextView(value: label, size: 12, color: Colors.grey)),
+        const PoppinsTextView(value: ": ", size: 12, color: Colors.grey),
+        Expanded(
+            flex: 3,
             child: PoppinsTextView(
                 value: value,
-                size: 13,
+                size: 12,
                 fontWeight: FontWeight.w600,
                 color: Colors.black87)),
       ],

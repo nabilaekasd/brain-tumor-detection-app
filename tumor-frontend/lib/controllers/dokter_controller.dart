@@ -3,11 +3,13 @@ import 'dart:math';
 import 'package:axon_vision/models/patient_model.dart';
 import 'package:axon_vision/pages/login/login_page.dart';
 import 'package:axon_vision/utils/api_config.dart';
+import 'package:axon_vision/helpers/snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:http/http.dart' as http;
-import 'package:image_picker/image_picker.dart'; // File_picker dihapus karena tidak upload MRI
+import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 
 class DokterController extends GetxController {
   final box = GetStorage();
@@ -27,6 +29,7 @@ class DokterController extends GetxController {
   var displayRole = 'Doctor'.obs;
   var profileImageUrl = "".obs;
   var currentUserId = 0.obs;
+  var selectedDateFilter = Rxn<DateTime>();
 
   // Data Dashboard
   var dashboardSummary =
@@ -60,7 +63,7 @@ class DokterController extends GetxController {
     }).toList();
   }
 
-  // FORM VARIABLES (Variabel Upload MRI sudah dihapus)
+  // FORM VARIABLES
   TextEditingController myUsernameC = TextEditingController();
   TextEditingController myFullNameC = TextEditingController();
   TextEditingController oldPasswordC = TextEditingController();
@@ -104,6 +107,14 @@ class DokterController extends GetxController {
     }
   }
 
+  void filterHistoryByDate(DateTime date) {
+    selectedDateFilter.value = date;
+  }
+
+  void clearDateFilter() {
+    selectedDateFilter.value = null;
+  }
+
   void searchPatient(String query) {
     if (query.isEmpty) {
       filteredPatientList.assignAll(allPatientList);
@@ -134,7 +145,6 @@ class DokterController extends GetxController {
     if (activeIndex.value == 0) {
       return "Dashboard Overview";
     } else if (activeIndex.value == 1) {
-      // Step disesuaikan karena tidak ada form upload
       switch (patientViewStep.value) {
         case 0:
           return "Data Pasien";
@@ -169,13 +179,12 @@ class DokterController extends GetxController {
     selectedAnalysisId.value = analysisId;
     detailAnalysisData.value = {};
     isLoadingDetail.value = true;
-    patientViewStep.value = 2; // Ubah jadi 2 karena form upload hilang
+    patientViewStep.value = 2;
     fetchAnalysisDetail(analysisId);
   }
 
   void backToPreviousStep() {
     if (patientViewStep.value == 2) {
-      // Dari Analisis kembali ke Detail / Dashboard
       if (selectedPatient.value == null) {
         activeIndex.value = 0;
         patientViewStep.value = 0;
@@ -184,7 +193,6 @@ class DokterController extends GetxController {
       }
       selectedAnalysisId.value = "";
     } else if (patientViewStep.value == 1) {
-      // Dari Detail kembali ke List Pasien
       patientViewStep.value = 0;
       selectedPatient.value = null;
     }
@@ -196,6 +204,14 @@ class DokterController extends GetxController {
 
   List<dynamic> get sortedPatientHistory {
     var tempList = List<dynamic>.from(selectedPatientHistory);
+
+    if (selectedDateFilter.value != null) {
+      String filterDateStr =
+          DateFormat('dd/MM/yyyy').format(selectedDateFilter.value!);
+      tempList = tempList.where((scan) {
+        return scan['tanggal_periksa'].toString() == filterDateStr;
+      }).toList();
+    }
 
     DateTime parseDate(String dateStr) {
       try {
@@ -246,15 +262,41 @@ class DokterController extends GetxController {
   }
 
   Future<void> saveProfile() async {
-    if (currentUserId.value == 0) return;
+    if (currentUserId.value == 0) {
+      SnackbarHelper.showError(
+          title: "Sistem Belum Siap",
+          message:
+              "Data Anda belum termuat sempurna. Silakan muat ulang halaman.");
+      fetchMyProfile();
+      return;
+    }
 
     if (newPasswordC.text.isNotEmpty || oldPasswordC.text.isNotEmpty) {
       if (newPasswordC.text.isEmpty || oldPasswordC.text.isEmpty) {
-        Get.snackbar(
-          "Gagal",
-          "Untuk ganti password, Wajib isi Password Lama dan Baru.",
-          backgroundColor: Colors.orange,
-          colorText: Colors.white,
+        SnackbarHelper.showError(
+          title: "Validasi Gagal",
+          message:
+              "Untuk mengganti kata sandi, WAJIB mengisi Password Lama dan Password Baru.",
+        );
+        return;
+      }
+      if (oldPasswordC.text == newPasswordC.text) {
+        SnackbarHelper.showError(
+          title: "Password Sama",
+          message: "password baru tidak boleh sama dengan password lama Anda!",
+        );
+        return;
+      }
+
+      String pattern =
+          r'^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$';
+      RegExp regex = RegExp(pattern);
+
+      if (!regex.hasMatch(newPasswordC.text)) {
+        SnackbarHelper.showError(
+          title: "Password Terlalu Lemah",
+          message:
+              "Password minimal 8 karakter, wajib mengandung huruf, angka, dan simbol.",
         );
         return;
       }
@@ -263,12 +305,17 @@ class DokterController extends GetxController {
     try {
       isLoading.value = true;
       String? token = getToken();
+      if (token == null) return;
+
       Map<String, dynamic> bodyData = {
         "username": myUsernameC.text,
         "full_name": myFullNameC.text,
         "role": displayRole.value,
-        "avatar": profileImageUrl.value,
       };
+
+      if (profileImageUrl.value.isNotEmpty) {
+        bodyData["avatar"] = profileImageUrl.value;
+      }
 
       if (newPasswordC.text.isNotEmpty) {
         bodyData["password"] = newPasswordC.text;
@@ -282,17 +329,35 @@ class DokterController extends GetxController {
           },
           body: json.encode(bodyData));
 
-      if (response.statusCode == 200) {
-        Get.snackbar("Sukses", "Profil berhasil diperbarui",
-            backgroundColor: Colors.green, colorText: Colors.white);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // Pop-up Sukses Besar!
+        SnackbarHelper.showSuccessDialog(
+            title: "Profil Tersimpan",
+            description:
+                "Data profil atau kata sandi Anda berhasil diperbarui.",
+            onConfirm: () {} // Biarkan kosong agar hanya menutup pop-up
+            );
         fetchMyProfile();
         clearProfileForm();
+      } else if (response.statusCode == 422) {
+        debugPrint("Alasan Error 422 dari Backend: ${response.body}");
+        SnackbarHelper.showError(
+          title: "Gagal Disimpan",
+          message: "Data ditolak oleh server. Pastikan isian Anda sudah benar.",
+        );
       } else {
-        Get.snackbar("Gagal", "Gagal update profil: ${response.body}",
-            backgroundColor: Colors.red, colorText: Colors.white);
+        SnackbarHelper.showError(
+          title: "Gagal Terhubung",
+          message:
+              "Terjadi kesalahan server dengan status: ${response.statusCode}",
+        );
       }
     } catch (e) {
-      debugPrint("Error: $e");
+      debugPrint("Error saat saveProfile: $e");
+      SnackbarHelper.showError(
+          title: "Koneksi Terputus",
+          message:
+              "Gagal terhubung ke server. Periksa jaringan internet Anda.");
     } finally {
       isLoading.value = false;
     }
@@ -301,7 +366,10 @@ class DokterController extends GetxController {
   Future<void> pickAndUploadAvatar() async {
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+
     if (image != null) {
+      final currentContext = Get.overlayContext;
+
       try {
         String? token = getToken();
         var request = http.MultipartRequest(
@@ -311,21 +379,49 @@ class DokterController extends GetxController {
             'file', await image.readAsBytes(),
             filename: image.name));
 
-        Get.dialog(const Center(child: CircularProgressIndicator()),
-            barrierDismissible: false);
-        var response = await http.Response.fromStream(await request.send());
-        Get.back();
+        if (currentContext != null) {
+          showDialog(
+            context: currentContext,
+            barrierDismissible: false,
+            builder: (context) => const Center(
+                child: CircularProgressIndicator(color: Colors.white)),
+          );
+        }
 
-        if (response.statusCode == 200) {
+        var response = await http.Response.fromStream(await request.send());
+
+        if (currentContext != null) {
+          Navigator.of(currentContext, rootNavigator: true).pop();
+        }
+
+        await Future.delayed(const Duration(milliseconds: 300));
+
+        if (response.statusCode == 200 || response.statusCode == 201) {
           var data = jsonDecode(response.body);
           if (data['url'] != null) profileImageUrl.value = data['url'];
-          Get.snackbar("Sukses", "Foto profil diperbarui",
-              backgroundColor: Colors.green, colorText: Colors.white);
+
+          // Toast sukses sekilas (tidak mengganggu)
+          SnackbarHelper.showSuccess(
+            title: "Foto Berhasil Diunggah",
+            message: "Foto profil Anda telah diperbarui secara otomatis.",
+          );
+        } else {
+          SnackbarHelper.showError(
+            title: "Gagal Mengunggah",
+            message:
+                "Server menolak file gambar Anda. Status: ${response.statusCode}",
+          );
         }
       } catch (e) {
-        Get.back();
+        if (currentContext != null) {
+          Navigator.of(currentContext, rootNavigator: true).pop();
+        }
         debugPrint("Error: $e");
-        Get.snackbar("Gagal", "Gagal upload avatar");
+        await Future.delayed(const Duration(milliseconds: 300));
+        SnackbarHelper.showError(
+            title: "Koneksi Terputus",
+            message:
+                "Gagal mengunggah foto. Pastikan koneksi stabil dan ukuran file tidak terlalu besar.");
       }
     }
   }
@@ -406,11 +502,15 @@ class DokterController extends GetxController {
 
         detailAnalysisData.value = data;
       } else {
-        Get.snackbar("Gagal", "Server Error: ${response.statusCode}");
+        SnackbarHelper.showError(
+            title: "Gagal Memuat Analisis",
+            message: "Server mengembalikan status: ${response.statusCode}");
       }
     } catch (e) {
       debugPrint("Error: $e");
-      Get.snackbar("Error", "Gagal koneksi ke server");
+      SnackbarHelper.showError(
+          title: "Koneksi Terputus",
+          message: "Gagal menarik data analisis dari server.");
     } finally {
       isLoadingDetail.value = false;
     }
@@ -432,18 +532,23 @@ class DokterController extends GetxController {
         }),
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         detailAnalysisData['notes_dokter'] = notes;
         detailAnalysisData.refresh();
 
-        Get.snackbar("Sukses", "Catatan dokter berhasil disimpan ke server",
-            backgroundColor: Colors.red, colorText: Colors.white);
+        // Pakai Toast biar Dokter merasa prosesnya cepat dan ringan
+        SnackbarHelper.showSuccess(
+            title: "Catatan Disimpan",
+            message: "Catatan medis berhasil ditambahkan ke dalam sistem.");
       } else {
-        Get.snackbar("Gagal", "Gagal menyimpan: ${response.body}",
-            backgroundColor: Colors.red, colorText: Colors.white);
+        SnackbarHelper.showError(
+            title: "Gagal Menyimpan",
+            message: "Gagal menyimpan catatan: ${response.body}");
       }
     } catch (e) {
-      Get.snackbar("Error", "Terjadi kesalahan koneksi");
+      SnackbarHelper.showError(
+          title: "Koneksi Terputus",
+          message: "Terjadi kesalahan koneksi saat mencoba menyimpan catatan.");
     } finally {
       isLoading.value = false;
     }

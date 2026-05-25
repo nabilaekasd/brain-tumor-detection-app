@@ -715,14 +715,16 @@ class DokterDashboardPage extends StatelessWidget {
 
   Widget _buildContent(DokterController controller) {
     // DIUBAH
-    if (controller.activeIndex.value == 0)
+    if (controller.activeIndex.value == 0) {
       return const DokterHomeView(); // DIUBAH
-
+    }
     // ERROR: Karena file ini belum kita buat, Anda perlu membuat file dokter_patient_view.dart dan dokter_profile_view.dart terlebih dahulu atau berikan // komentar pada dua baris di bawah jika ingin mengetes aplikasinya.
-    if (controller.activeIndex.value == 1)
-      return const DokterPatientView(); // DIUBAH
-    if (controller.activeIndex.value == 2)
+    if (controller.activeIndex.value == 1) {
+      return const DokterPatientView();
+    }
+    if (controller.activeIndex.value == 2) {
       return const DokterProfileView(); // DIUBAH
+    }
     return const SizedBox();
   }
 

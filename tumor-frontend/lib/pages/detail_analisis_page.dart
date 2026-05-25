@@ -7,6 +7,8 @@ import 'package:axon_vision/utils/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_web/webview_flutter_web.dart'; // Wajib ada
+import 'package:webview_flutter_platform_interface/webview_flutter_platform_interface.dart'; // Wajib ada
 import 'package:flutter/foundation.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 
@@ -41,13 +43,13 @@ class _DetailAnalisisPageState extends State<DetailAnalisisPage> {
   int _axis2D = 2; // 0: Sagittal, 1: Coronal, 2: Axial
   String _label2D = "all"; // all, netc, snfh, et, rc
 
-  double _sliceIdx = 75; // Untuk pergerakan mulus UI Slider
-  double _fetchSliceIdx = 75; // Untuk trigger pemanggilan API
+  double _sliceIdx = 75;
+  double _fetchSliceIdx = 75;
   int _maxSlice = 155;
-  Timer? _debounceTimer; // Timer untuk slider real-time
+  Timer? _debounceTimer;
 
   // --- STATE UNTUK 3D ---
-  String _label3D = "all"; // all, netc, snfh, et, rc
+  String _label3D = "all";
   bool _showBrain3D = true;
 
   int _quarterTurns = 0;
@@ -89,7 +91,7 @@ class _DetailAnalisisPageState extends State<DetailAnalisisPage> {
         _axis2D = newAxis;
         _maxSlice = shape[_axis2D] - 1;
         _sliceIdx = _maxSlice / 2;
-        _fetchSliceIdx = _sliceIdx; // Reset target fetch
+        _fetchSliceIdx = _sliceIdx;
       });
     }
   }
@@ -208,7 +210,6 @@ class _DetailAnalisisPageState extends State<DetailAnalisisPage> {
     return Material(
         color: Colors.transparent,
         child: LayoutBuilder(builder: (context, constraints) {
-          bool isMobile = constraints.maxWidth < 750;
           double availableHeight = constraints.maxHeight - 32;
 
           return Container(
@@ -367,7 +368,6 @@ class _DetailAnalisisPageState extends State<DetailAnalisisPage> {
                                       ),
                                     ),
                                     Container(
-                                      // 👇 Padding atas kita perbesar jadi 16 biar bisa bernapas!
                                       padding: const EdgeInsets.only(
                                           top: 16,
                                           bottom: 12,
@@ -490,9 +490,7 @@ class _DetailAnalisisPageState extends State<DetailAnalisisPage> {
                                               ),
                                             ],
                                           ),
-                                          const SizedBox(
-                                              height:
-                                                  12), // Jarak antara dropdown & slider
+                                          const SizedBox(height: 12),
                                           Row(
                                             children: [
                                               const PoppinsTextView(
@@ -597,7 +595,6 @@ class _DetailAnalisisPageState extends State<DetailAnalisisPage> {
                                           horizontal: 20, vertical: 14),
                                       color: Colors.white,
                                       width: double.infinity,
-                                      // 👇 OBATNYA: Pakai Wrap dengan spaceBetween agar Kiri & Kanan terpisah sejauh mungkin!
                                       child: Wrap(
                                         alignment: WrapAlignment.spaceBetween,
                                         crossAxisAlignment:
@@ -609,7 +606,6 @@ class _DetailAnalisisPageState extends State<DetailAnalisisPage> {
                                           Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              // Bikin icon-nya ada background abu-abunya sedikit biar lebih premium
                                               Container(
                                                 padding:
                                                     const EdgeInsets.all(6),
@@ -634,7 +630,6 @@ class _DetailAnalisisPageState extends State<DetailAnalisisPage> {
                                               Switch(
                                                 value: _showBrain3D,
                                                 activeColor: AppColors.blueDark,
-                                                // Bikin ukuran switch lebih compact
                                                 materialTapTargetSize:
                                                     MaterialTapTargetSize
                                                         .shrinkWrap,
@@ -942,9 +937,7 @@ class _DetailAnalisisPageState extends State<DetailAnalisisPage> {
                 if (constraints.maxWidth < 1000) {
                   return Column(
                     children: [
-                      SizedBox(
-                          height: 400,
-                          child: imageViewer), // Tinggi diperbesar untuk slider
+                      SizedBox(height: 400, child: imageViewer),
                       const SizedBox(height: 16),
                       Expanded(child: infoPanel),
                     ],
@@ -956,17 +949,12 @@ class _DetailAnalisisPageState extends State<DetailAnalisisPage> {
                       Expanded(
                           flex: 6,
                           child: SizedBox(
-                            height: availableHeight,
-                            child: imageViewer,
-                          )),
+                              height: availableHeight, child: imageViewer)),
                       const SizedBox(width: 20),
                       Expanded(
-                        flex: 4,
-                        child: SizedBox(
-                          height: availableHeight,
-                          child: infoPanel,
-                        ),
-                      ),
+                          flex: 4,
+                          child: SizedBox(
+                              height: availableHeight, child: infoPanel)),
                     ],
                   );
                 }
@@ -1040,11 +1028,10 @@ class _DetailAnalisisPageState extends State<DetailAnalisisPage> {
       padding: const EdgeInsets.all(8.0),
       child: Center(
         child: PoppinsTextView(
-          value: text,
-          size: 11,
-          fontWeight: isHeader ? FontWeight.bold : FontWeight.w500,
-          color: isHeader ? Colors.black87 : Colors.black54,
-        ),
+            value: text,
+            size: 11,
+            fontWeight: isHeader ? FontWeight.bold : FontWeight.w500,
+            color: isHeader ? Colors.black87 : Colors.black54),
       ),
     );
   }
@@ -1079,13 +1066,12 @@ class _DetailAnalisisPageState extends State<DetailAnalisisPage> {
           PoppinsTextView(value: label, color: Colors.grey.shade600, size: 12),
           const SizedBox(width: 16),
           Expanded(
-            child: PoppinsTextView(
-                value: value,
-                fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
-                size: 12,
-                textAlign: TextAlign.right,
-                color: isBold ? Colors.black : Colors.black87),
-          ),
+              child: PoppinsTextView(
+                  value: value,
+                  fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
+                  size: 12,
+                  textAlign: TextAlign.right,
+                  color: isBold ? Colors.black : Colors.black87)),
         ],
       ),
     );
@@ -1142,24 +1128,38 @@ class _WebView3DWidgetState extends State<WebView3DWidget> {
   @override
   void initState() {
     super.initState();
+
+    // 1. Pendaftaran Platform Web
+    if (kIsWeb) {
+      WebViewPlatform.instance = WebWebViewPlatform();
+    }
+
+    // 2. Inisialisasi Controller
     _controller = WebViewController();
 
+    // 3. Konfigurasi Spesifik Mobile (Android/iOS)
     if (!kIsWeb) {
-      _controller.setJavaScriptMode(JavaScriptMode.unrestricted);
-      _controller.setBackgroundColor(Colors.black);
-      _controller.setNavigationDelegate(
-        NavigationDelegate(
-          onPageFinished: (String url) {
-            if (mounted)
-              setState(() {
-                _isLoading = false;
-              });
-          },
-        ),
-      );
+      _controller
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..setBackgroundColor(Colors.black)
+        ..setNavigationDelegate(
+          NavigationDelegate(
+            onPageFinished: (String url) {
+              if (mounted) {
+                setState(() {
+                  _isLoading = false;
+                });
+              }
+            },
+          ),
+        );
     } else {
+      // Jika di Web, iframe otomatis mengeksekusi JS bawaan.
+      // Kita langsung matikan loading karena fitur deteksi onPageFinished tidak didukung di Web.
       _isLoading = false;
     }
+
+    // 4. Load URL (Berlaku untuk Web dan Mobile)
     _controller.loadRequest(Uri.parse(widget.url));
   }
 

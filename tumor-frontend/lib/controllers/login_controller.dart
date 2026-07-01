@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:axon_vision/utils/api_config.dart'; 
+import 'package:axon_vision/utils/api_config.dart';
 import 'package:axon_vision/pages/admin/admin_dashboard_page.dart';
 import 'package:axon_vision/pages/dashboard/dashboard_page.dart';
 import 'package:axon_vision/pages/global_widgets/text_fonts/poppins_text_view.dart';
@@ -48,6 +48,7 @@ class LoginController extends GetxController {
 
       if (Get.isDialogOpen ?? false) Get.back();
 
+      // [A] JIKA LOGIN SUKSES
       if (response.statusCode == 200) {
         var data = json.decode(response.body);
         String token = data['access_token'];
@@ -79,11 +80,33 @@ class LoginController extends GetxController {
             Get.offAllNamed(AppRoute.dokterDashboard);
           }
         });
-      } else {
+      }
+      // [B] JIKA AKUN DINONAKTIFKAN (TANGKAP BUG 403 DI SINI)
+      else if (response.statusCode == 403) {
+        debugPrint("Login Failed: Akun Non-aktif (403)");
+
+        // Coba tangkap pesan error bawaan dari backend, atau gunakan pesan default
+        var errorData = json.decode(response.body);
+        String errorMessage = errorData['detail'] ??
+            'Akun Anda telah dinonaktifkan. Silakan hubungi IT System Administrator.';
+
+        _showDialog(
+          title: 'Akun Non-aktif',
+          message: errorMessage,
+          isSuccess: false,
+        );
+      }
+      // [C] JIKA USERNAME/PASSWORD SALAH (400/401 ATAU ERROR LAIN)
+      else {
         debugPrint("Login Failed: ${response.statusCode}");
+
+        var errorData = json.decode(response.body);
+        String errorMessage = errorData['detail'] ??
+            'Username atau Password salah. Silakan coba lagi.';
+
         _showDialog(
           title: 'Akses Ditolak',
-          message: 'Username atau Password salah. Silakan coba lagi.',
+          message: errorMessage,
           isSuccess: false,
         );
       }

@@ -85,7 +85,6 @@ class LoginController extends GetxController {
       else if (response.statusCode == 403) {
         debugPrint("Login Failed: Akun Non-aktif (403)");
 
-        // Coba tangkap pesan error bawaan dari backend, atau gunakan pesan default
         var errorData = json.decode(response.body);
         String errorMessage = errorData['detail'] ??
             'Akun Anda telah dinonaktifkan. Silakan hubungi IT System Administrator.';

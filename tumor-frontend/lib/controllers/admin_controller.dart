@@ -316,29 +316,31 @@ class AdminController extends GetxController {
   }
 
   /// [UPDATE] UPDATE USER
-  /// [UPDATE] UPDATE USER
   Future<void> updateUser(int userId,
       {bool isUpdatingOwnProfile = false}) async {
     // Validasi Password Keamanan Tinggi
-    if (newPasswordC.text.isNotEmpty || oldPasswordC.text.isNotEmpty) {
-      if (newPasswordC.text.isEmpty || oldPasswordC.text.isEmpty) {
-        SnackbarHelper.showError(
-          title: "Validasi Gagal",
-          message:
-              "Untuk mengganti kata sandi, Anda WAJIB mengisi Password Lama dan Baru.",
-        );
-        return;
+    if (newPasswordC.text.isNotEmpty) {
+      // Jika Admin mengedit profilnya SENDIRI, wajib validasi password lama
+      if (isUpdatingOwnProfile) {
+        if (oldPasswordC.text.isEmpty) {
+          SnackbarHelper.showError(
+            title: "Validasi Gagal",
+            message:
+                "Untuk mengganti kata sandi Anda sendiri, WAJIB mengisi Password Lama.",
+          );
+          return;
+        }
+        if (oldPasswordC.text == newPasswordC.text) {
+          SnackbarHelper.showError(
+            title: "Password Sama",
+            message:
+                "Password baru tidak boleh sama dengan password yang lama.",
+          );
+          return;
+        }
       }
 
-      if (oldPasswordC.text == newPasswordC.text) {
-        SnackbarHelper.showError(
-          title: "Password Sama",
-          message: "Password baru tidak boleh sama dengan password yang lama.",
-        );
-        return;
-      }
-
-      // RegEx Level Dewa
+      // RegEx Level Dewa tetap berlaku untuk semua (Admin maupun staf lain)
       String pattern =
           r'^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$';
       RegExp regex = RegExp(pattern);
@@ -357,18 +359,22 @@ class AdminController extends GetxController {
       String? token = getToken();
       if (token == null) return;
 
-      // 👇 PERBAIKAN BUG PAYLOAD DI SINI 👇
       Map<String, dynamic> data = {
         "username": usernameC.text,
         "full_name": fullNameC.text,
         "role": selectedRole.value,
-        "is_active": selectedStatus
-            .value, // Pastikan ini terkirim sebagai boolean (true/false)
+        "is_active": selectedStatus.value,
       };
 
-      // Jangan kirim password kalau kosong (biar backend tidak error)
+      // Menyusun payload password
       if (newPasswordC.text.isNotEmpty) {
         data["password"] = newPasswordC.text;
+
+        // 👇 PERBAIKAN BUG PAYLOAD 👇
+        // Kirim old_password ke backend HANYA jika admin mengubah profilnya sendiri
+        if (isUpdatingOwnProfile) {
+          data["old_password"] = oldPasswordC.text;
+        }
       }
 
       // INI OBAT ANTI-KLONING FOTO PROFIL:
@@ -404,7 +410,7 @@ class AdminController extends GetxController {
         SnackbarHelper.showError(
           title: "Gagal Menyimpan",
           message:
-              "Update gagal ditolak oleh server (Code ${response.statusCode})",
+              "Update ditolak oleh server (Code ${response.statusCode}). Pastikan password lama sesuai.",
         );
       }
     } catch (e) {

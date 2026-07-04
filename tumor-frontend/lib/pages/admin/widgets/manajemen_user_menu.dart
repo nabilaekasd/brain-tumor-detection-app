@@ -554,16 +554,12 @@ class ManajemenUserMenu extends GetView<AdminController> {
 
                 if (isEdit) ...[
                   const PoppinsTextView(
-                    value: "Ganti Password (Opsional)",
+                    value: "Reset Password (Opsional)",
                     size: 12,
                     fontWeight: FontWeight.bold,
                     color: Colors.orange,
                   ),
                   const SizedBox(height: 8),
-                  _inputField("Password Lama", controller.oldPasswordC,
-                      hint: "Wajib jika ganti password",
-                      obscureState: controller.isObscureOld),
-                  const SizedBox(height: 12),
                   _inputField("Password Baru", controller.newPasswordC,
                       hint: "Password baru",
                       obscureState: controller.isObscureNew),
@@ -676,7 +672,8 @@ class ManajemenUserMenu extends GetView<AdminController> {
                   child: ElevatedButton(
                     onPressed: () {
                       if (isEdit) {
-                        controller.updateUser(user!.id);
+                        controller.updateUser(user!.id,
+                            isUpdatingOwnProfile: false);
                       } else {
                         controller.addUser();
                       }

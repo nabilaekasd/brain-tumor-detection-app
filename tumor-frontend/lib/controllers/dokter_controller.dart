@@ -319,6 +319,7 @@ class DokterController extends GetxController {
 
       if (newPasswordC.text.isNotEmpty) {
         bodyData["password"] = newPasswordC.text;
+        bodyData["old_password"] = oldPasswordC.text;
       }
 
       var response = await http.put(
